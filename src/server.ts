@@ -1,0 +1,29 @@
+import path from "path";
+import express from "express";
+
+import siteRouter from "./routes/site";
+import adminRouter from "./routes/admin";
+
+const app = express();
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+
+app.set("view engine", "ejs");
+app.set("views", [
+  path.join(__dirname, "..", "views", "site"),
+  path.join(__dirname, "..", "views", "admin")
+]);
+
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "..", "public", "site")));
+app.use(express.static(path.join(__dirname, "..", "public", "admin")));
+
+app.locals.storage = "1.8 GB";
+
+app.use("/", siteRouter);
+app.use("/admin", adminRouter);
+
+app.listen(PORT, () => {
+  console.log(`Of Wild & Walls running at http://localhost:${PORT}/`);
+  console.log(`Admin panel at        http://localhost:${PORT}/admin/photos`);
+});

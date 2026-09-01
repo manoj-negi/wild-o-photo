@@ -1,0 +1,37 @@
+<%# views/partials/head.ejs %>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= typeof title !== 'undefined' ? title : 'Of Wild &amp; Walls' %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Playfair+Display:ital,wght@0,500;1,500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {
+        fontFamily: {
+          sans:  ['Archivo', 'system-ui', 'sans-serif'],
+          serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        },
+        colors: { paper: '#ffffff', ink: '#141414', night: '#0d0d0d', nightpill: '#1b1b1b' },
+      } },
+    };
+  </script>
+  <style>
+    html { -webkit-font-smoothing: antialiased; }
+    ::selection { background: #141414; color: #fff; }
+    :focus-visible { outline: 2px solid #141414; outline-offset: 3px; }
+    .dark :focus-visible { outline-color: #fff; }
+    .no-bar { scrollbar-width: none; -ms-overflow-style: none; }
+    .no-bar::-webkit-scrollbar { display: none; }
+    @keyframes railIn { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    .rail-in  { animation: railIn .6s cubic-bezier(.2,.7,.2,1) both; }
+    .fade-up  { animation: fadeUp .7s cubic-bezier(.2,.7,.2,1) both; }
+  </style>
+</head>
+<body class="bg-paper text-ink dark:bg-night dark:text-white font-sans">

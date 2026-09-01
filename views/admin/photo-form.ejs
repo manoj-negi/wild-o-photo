@@ -1,0 +1,166 @@
+<% const isEdit = mode === "edit"; %>
+<%- include("partials/head", { pageTitle: (isEdit ? "Edit photo" : "Add photo") + " · Studio Admin" }) %>
+<div class="flex min-h-screen flex-col">
+  <%- include("partials/header", { flash: "", primaryForm: "photo-form" }) %>
+
+  <div class="grid flex-1 items-stretch" style="grid-template-columns: 214px 1fr">
+    <%- include("partials/sidebar", { nav: nav, photos: [], categories: categories }) %>
+
+    <main class="min-w-0 px-7 pb-11 pt-6">
+      <form id="photo-form" method="post"
+            action="<%= isEdit ? '/admin/photos/' + photo.slug : '/admin/photos' %>">
+        <div class="mb-4 flex items-end justify-between gap-4">
+          <div>
+            <h1 class="m-0 mb-1 text-[21px] font-semibold tracking-tight"><%= isEdit ? "Edit photo" : "Add photo" %></h1>
+            <p class="m-0 text-[13px] text-mute">
+              <%= isEdit ? "/" + photo.slug : "Upload the file, then describe it. Extra fields are yours to invent." %>
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <a href="/admin/photos" class="pill-light">Cancel</a>
+            <button class="pill-dark"><%= isEdit ? "Save photo" : "Publish photo" %></button>
+          </div>
+        </div>
+
+        <div class="grid items-start gap-4" style="grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr)">
+
+          <div class="grid gap-4">
+            <section class="card p-5">
+              <div class="kicker mb-3.5">Core details</div>
+              <div class="grid grid-cols-2 gap-3.5">
+                <label class="label">Hover caption
+                  <input class="field mt-1.5" name="cap" value="<%= photo.cap %>" placeholder="Morning Patrol" required>
+                </label>
+                <label class="label">Slug
+                  <input class="field mt-1.5" name="slug" value="<%= photo.slug %>" placeholder="morning-patrol">
+                </label>
+                <label class="label">Panel title
+                  <input class="field mt-1.5" name="title" value="<%= photo.title %>" placeholder="Ridgeline, Noon">
+                </label>
+                <label class="label">Reference
+                  <input class="field mt-1.5" name="ref" value="<%= photo.ref %>" placeholder="HR.01 / 05">
+                </label>
+                <label class="label">Category
+                  <select class="field mt-1.5" name="category">
+                    <option value="">Unassigned</option>
+                    <% categories.forEach(function (c) { %>
+                      <option value="<%= c.title %>" <%= photo.category === c.title ? "selected" : "" %>><%= c.title %></option>
+                    <% }); %>
+                  </select>
+                </label>
+                <label class="label">Collection
+                  <input class="field mt-1.5" name="collection" value="<%= photo.collection %>" placeholder="Spiti, 2022">
+                </label>
+                <label class="label">Camera
+                  <input class="field mt-1.5" name="camera" value="<%= photo.camera %>" placeholder="Canon R5">
+                </label>
+                <label class="label">Date
+                  <input class="field mt-1.5" type="date" name="date" value="<%= photo.date %>">
+                </label>
+              </div>
+              <label class="label mt-3.5">About the photo
+                <textarea class="field mt-1.5 resize-y" name="about" rows="3" placeholder="One or two lines about the moment."><%= photo.about %></textarea>
+              </label>
+              <label class="label mt-3.5">Alternate note
+                <textarea class="field mt-1.5 resize-y" name="altNote" rows="2" placeholder="The line that sits under the rule."><%= photo.altNote %></textarea>
+              </label>
+            </section>
+
+            <section class="card p-5" data-meta>
+              <div class="mb-1 flex items-baseline justify-between gap-4">
+                <div class="kicker">Metadata</div>
+                <div class="text-xs text-mute"><span data-meta-count><%= photo.meta.length %></span> fields</div>
+              </div>
+              <p class="m-0 mb-3.5 text-xs text-mute">Anything you name here shows up in the details panel, in this order.</p>
+
+              <div class="grid gap-2.5" data-meta-rows>
+                <% photo.meta.forEach(function (m) { %>
+                  <div class="grid items-center gap-2.5" style="grid-template-columns: minmax(140px, 200px) minmax(0, 1fr) 34px" data-meta-row>
+                    <input class="field bg-sand text-xs uppercase tracking-wide text-[#4a443e]" name="meta_key" value="<%= m.key %>">
+                    <input class="field" name="meta_value" value="<%= m.value %>">
+                    <button type="button" title="Remove field" data-meta-remove
+                            class="h-[34px] w-[34px] rounded-full border border-line2 bg-white text-[15px] leading-none text-mute hover:bg-sand">&times;</button>
+                  </div>
+                <% }); %>
+              </div>
+
+              <div class="mt-3 hidden rounded-2xl border border-line bg-sand p-4" data-meta-new>
+                <div class="mb-2.5 text-xs text-mute">New field</div>
+                <div class="mb-3 grid gap-2.5" style="grid-template-columns: minmax(140px, 200px) minmax(0, 1fr)">
+                  <input class="field" data-new-key placeholder="Field name, e.g. Guide">
+                  <input class="field" data-new-value placeholder="Value, e.g. Ramesh T.">
+                </div>
+                <div class="flex gap-2">
+                  <button type="button" data-meta-commit class="rounded-full bg-amber px-4 py-2 text-xs font-semibold text-pine hover:bg-[#d79c4c]">Add field</button>
+                  <button type="button" data-meta-cancel class="rounded-full border border-line2 bg-white px-4 py-2 text-xs">Cancel</button>
+                </div>
+              </div>
+
+              <button type="button" data-meta-start
+                      class="mt-3.5 rounded-full border border-dashed border-amber bg-amber/10 px-4 py-2.5 text-xs font-medium text-amberink">
+                + Add metadata field
+              </button>
+            </section>
+          </div>
+
+          <div class="grid gap-4">
+            <section class="card p-5">
+              <div class="kicker mb-3.5">File</div>
+              <% if (photo.src) { %>
+                <div class="mb-3 aspect-[3/2] w-full overflow-hidden rounded-2xl bg-[#e6e0d7]">
+                  <img src="<%= photo.src %>" alt="<%= photo.alt %>" class="block h-full w-full object-cover grayscale">
+                </div>
+                <div class="flex items-center justify-between gap-2.5 text-xs text-mute">
+                  <span><%= photo.src %></span>
+                  <label class="cursor-pointer rounded-full border border-line2 bg-white px-3 py-1.5 text-xs">
+                    Replace<input type="file" name="file" accept="image/jpeg" class="hidden">
+                  </label>
+                </div>
+              <% } else { %>
+                <div class="rounded-2xl border-2 border-dashed border-[#d4cabb] bg-sand px-5 py-7 text-center">
+                  <div class="mb-1.5 text-sm font-semibold">Drop a JPEG here</div>
+                  <div class="mb-3.5 text-xs text-mute">Saved to /public/img · 4000px longest edge</div>
+                  <label class="inline-block cursor-pointer rounded-full bg-pine px-4 py-2.5 text-xs text-cream">
+                    Choose file<input type="file" name="file" accept="image/jpeg" class="hidden">
+                  </label>
+                </div>
+              <% } %>
+              <input type="hidden" name="src" value="<%= photo.src %>">
+              <label class="label mt-3.5">Alt text
+                <input class="field mt-1.5" name="alt" value="<%= photo.alt %>" placeholder="Tiger walking">
+              </label>
+            </section>
+
+            <section class="card p-5">
+              <div class="kicker mb-3.5">Placement</div>
+              <div class="grid gap-2.5" style="grid-template-columns: repeat(4, minmax(0, 1fr))">
+                <label class="label">L<input class="field mt-1.5" name="l" value="<%= photo.l %>"></label>
+                <label class="label">T<input class="field mt-1.5" name="t" value="<%= photo.t %>"></label>
+                <label class="label">W<input class="field mt-1.5" name="w" value="<%= photo.w %>"></label>
+                <label class="label">H<input class="field mt-1.5" name="h" value="<%= photo.h %>"></label>
+              </div>
+              <p class="mt-3 text-xs text-mute">Position and size in the flow view, in vw.</p>
+            </section>
+
+            <section class="card p-5">
+              <div class="kicker mb-3.5">Visibility</div>
+              <div class="mb-4 flex gap-2">
+                <% ["Flow", "Grid", "Featured"].forEach(function (v) { const on = (photo.views || []).indexOf(v) > -1; %>
+                  <label class="cursor-pointer rounded-full px-4 py-2 text-xs <%= on ? 'border border-amber bg-amber/15 font-semibold text-amberink' : 'border border-line2 bg-white text-mute' %>">
+                    <input type="checkbox" name="views" value="<%= v %>" class="hidden" <%= on ? "checked" : "" %> data-toggle-pill>
+                    <%= v %>
+                  </label>
+                <% }); %>
+              </div>
+              <div class="flex gap-2">
+                <button class="pill-dark" name="live" value="live"><%= isEdit ? "Save photo" : "Publish photo" %></button>
+                <button class="pill-light" name="live" value="draft">Save as draft</button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>
+<%- include("partials/footer") %>

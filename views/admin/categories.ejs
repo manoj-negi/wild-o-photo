@@ -1,0 +1,111 @@
+<% const cat = categories[sel] || { title: "", parent: "None", description: "" }; %>
+<%- include("partials/head", { pageTitle: "Categories · Studio Admin" }) %>
+<div class="flex min-h-screen flex-col">
+  <%- include("partials/header", { flash: flash, primaryForm: "category-form" }) %>
+
+  <div class="grid flex-1 items-stretch" style="grid-template-columns: 214px 1fr">
+    <%- include("partials/sidebar", { nav: nav, photos: photos, categories: categories }) %>
+
+    <main class="min-w-0 px-7 pb-11 pt-6">
+      <div class="mb-4 flex items-end justify-between gap-4">
+        <div>
+          <h1 class="m-0 mb-1 text-[21px] font-semibold tracking-tight">Categories</h1>
+          <p class="m-0 text-[13px] text-mute">
+            <%= categories.length %> categories · <%= categories.filter(c => c.parent === "None").length %> top level
+          </p>
+        </div>
+        <button type="button" data-open-modal="new-category" class="pill-dark">Add category</button>
+      </div>
+
+      <div class="grid items-start gap-4" style="grid-template-columns: minmax(0, 1fr) 340px">
+        <div class="card overflow-hidden">
+          <table class="w-full table-fixed border-collapse text-[13px]" data-table="categories">
+            <thead>
+              <tr class="bg-sand">
+                <th class="th">Title</th>
+                <th class="th w-[26%]">Parent</th>
+                <th class="th w-[15%]">Photos</th>
+                <th class="th w-[118px] text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% categories.forEach(function (c, i) { %>
+                <tr class="cursor-pointer border-b border-[#f3ede4] <%= i === sel ? 'bg-amber/10' : '' %>"
+                    data-title="<%= c.title %>" data-parent="<%= c.parent %>"
+                    onclick="location.href='/admin/categories?sel=<%= i %>'">
+                  <td class="td truncate font-medium"><%= c.title %></td>
+                  <td class="td truncate text-xs text-mute"><%= c.parent %></td>
+                  <td class="td text-xs text-mute"><%= photos.filter(p => p.category === c.title).length %></td>
+                  <td class="td">
+                    <div class="flex justify-end gap-1.5">
+                      <a href="/admin/categories?sel=<%= i %>" class="rounded-full border border-line2 bg-white px-3 py-1.5 text-xs hover:bg-sand">Edit</a>
+                      <form method="post" action="/admin/categories/<%= i %>/delete" data-confirm="Delete <%= c.title %>?" onclick="event.stopPropagation()">
+                        <button title="Delete" class="h-7 w-7 rounded-full border border-line2 bg-white text-sm leading-none text-mute hover:bg-sand">&times;</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            </tbody>
+          </table>
+        </div>
+
+        <form id="category-form" method="post" action="/admin/categories/<%= sel %>" class="card p-5">
+          <div class="kicker mb-3.5">Edit category</div>
+          <div class="grid gap-3.5">
+            <label class="label">Category title
+              <input class="field mt-1.5" name="title" value="<%= cat.title %>" required>
+            </label>
+            <label class="label">Parent category
+              <select class="field mt-1.5" name="parent">
+                <option value="None" <%= cat.parent === "None" ? "selected" : "" %>>None</option>
+                <% categories.forEach(function (c, i) { if (i !== sel) { %>
+                  <option value="<%= c.title %>" <%= cat.parent === c.title ? "selected" : "" %>><%= c.title %></option>
+                <% } }); %>
+              </select>
+            </label>
+            <label class="label">Description
+              <textarea class="field mt-1.5 resize-y" name="description" rows="4" placeholder="Shown under the category in the menu."><%= cat.description %></textarea>
+            </label>
+            <div class="flex gap-2 pt-1">
+              <button class="pill-dark">Save category</button>
+              <button type="submit" formaction="/admin/categories/<%= sel %>/delete" formmethod="post"
+                      class="pill-light text-amberink" data-confirm-click="Delete <%= cat.title %>?">Delete</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div id="new-category" class="fixed inset-0 z-40 hidden place-items-center bg-pine/50 p-6" data-modal>
+  <form method="post" action="/admin/categories"
+        class="w-full max-w-[460px] overflow-hidden rounded-[20px] border border-line bg-cream shadow-2xl">
+    <div class="flex items-center justify-between gap-3 bg-pine px-5 py-4 text-cream">
+      <span class="text-[15px] font-semibold">New category</span>
+      <button type="button" data-close-modal class="h-7 w-7 rounded-full border border-cream/25 text-sm leading-none text-cream">&times;</button>
+    </div>
+    <div class="grid gap-3.5 p-5">
+      <label class="label">Category title
+        <input class="field mt-1.5" name="title" placeholder="Wetlands" required>
+      </label>
+      <label class="label">Parent category
+        <select class="field mt-1.5" name="parent">
+          <option value="None">None</option>
+          <% categories.forEach(function (c) { %>
+            <option value="<%= c.title %>"><%= c.title %></option>
+          <% }); %>
+        </select>
+      </label>
+      <label class="label">Description
+        <textarea class="field mt-1.5 resize-y" name="description" rows="3" placeholder="Shown under the category in the menu."></textarea>
+      </label>
+      <div class="flex gap-2 pt-0.5">
+        <button class="rounded-full bg-amber px-4 py-2.5 text-[13px] font-semibold text-pine hover:bg-[#d79c4c]">Create category</button>
+        <button type="button" data-close-modal class="pill-light">Cancel</button>
+      </div>
+    </div>
+  </form>
+</div>
+<%- include("partials/footer") %>

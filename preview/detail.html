@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Palm Backwater — Of Wild &amp; Walls</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500&family=Playfair+Display:wght@500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: { extend: {
+        fontFamily: {
+          sans:  ['Archivo', 'system-ui', 'sans-serif'],
+          serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        },
+        colors: { paper: '#ffffff', ink: '#141414', night: '#0d0d0d', nightpill: '#1b1b1b' },
+      } },
+    };
+  </script>
+  <style>
+    html { -webkit-font-smoothing: antialiased; }
+    ::selection { background: #141414; color: #fff; }
+    :focus-visible { outline: 2px solid #141414; outline-offset: 3px; }
+    .dark :focus-visible { outline-color: #fff; }
+    .no-bar { scrollbar-width: none; -ms-overflow-style: none; }
+    .no-bar::-webkit-scrollbar { display: none; }
+    @keyframes railIn { from { opacity: 0; transform: translateX(-26px); } to { opacity: 1; transform: none; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    .rail-in  { animation: railIn .6s cubic-bezier(.2,.7,.2,1) both; }
+    .fade-up  { animation: fadeUp .7s cubic-bezier(.2,.7,.2,1) both; }
+  </style>
+</head>
+<body class="bg-paper text-ink dark:bg-night dark:text-white font-sans">
+
+    <aside id="thumbRail" class="fixed left-0 top-0 z-20 h-screen w-[13vw] overflow-y-auto no-bar py-[1.2vw]">
+      <div class="flex flex-col gap-[1vw]">
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:1.67vw; width:4.92vw; height:4.5vw; animation-delay:60ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/lake.jpg" alt="Backwater treeline" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:1.67vw; width:4.92vw; height:6.58vw; animation-delay:115ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/eagle.jpg" alt="Eagle on a stone" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:1.67vw; width:4.92vw; height:3.4vw; animation-delay:170ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/tiger.jpg" alt="Tiger walking" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:2.17vw; width:4.92vw; height:6.58vw; animation-delay:225ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/hornbill.jpg" alt="Hornbill at a nest" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:3.75vw; width:4.92vw; height:3.96vw; animation-delay:280ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/palace.jpg" alt="Palace interior" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:5.54vw; width:4.92vw; height:3.33vw; animation-delay:335ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/owl.jpg" alt="Spotted owlet" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:3.67vw; width:4.92vw; height:3.33vw; animation-delay:390ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/bridge.jpg" alt="Brooklyn Bridge" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:2.2vw; width:4.92vw; height:6.46vw; animation-delay:445ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/woodpecker.jpg" alt="Woodpecker on a branch" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:1.67vw; width:4.92vw; height:6.79vw; animation-delay:500ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/river.jpg" alt="River rocks" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+        <a href="detail.html" class="group rail-in block shrink-0" style="margin-left:1.67vw; width:4.92vw; height:3.54vw; animation-delay:555ms">
+          <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+            <img src="../public/img/tigerclose.jpg" alt="Tiger, close" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+        </a>
+      </div>
+    </aside>
+
+    <div class="fixed top-0 right-0 z-30 h-[82px] flex items-center gap-6 pr-7">
+      <button type="button" id="ambientBtn" class="flex items-center gap-2.5 text-[12px] tracking-[0.14em] uppercase text-ink/55 dark:text-white/55 hover:text-ink dark:hover:text-white transition-colors">
+        <svg class="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 14v4M9 8v10M14 11v7M19 5v13"></path></svg>
+        <span class="whitespace-nowrap">Ambient Sound</span>
+      </button>
+
+      <button type="button" id="themeToggle" aria-label="Dark mode" class="text-ink/70 dark:text-white/70 hover:text-ink dark:hover:text-white transition-colors">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"></path></svg>
+      </button>
+
+      <div class="flex items-center gap-1 p-1 rounded-full border border-black/10 dark:border-white/15 bg-paper dark:bg-nightpill">
+        <button type="button" data-take="edited" class="px-4 py-1.5 rounded-full text-[12px] tracking-[0.1em] uppercase font-medium bg-ink text-white dark:bg-white dark:text-ink transition-colors">Edited</button>
+        <button type="button" data-take="raw" class="px-4 py-1.5 rounded-full text-[12px] tracking-[0.1em] uppercase text-ink/45 dark:text-white/45 hover:text-ink/75 dark:hover:text-white/75 transition-colors">Raw</button>
+      </div>
+
+      <button type="button" id="detailToggle" aria-label="Details" class="w-11 h-11 rounded-full border border-black/10 dark:border-white/15 bg-paper dark:bg-nightpill grid place-items-center text-ink dark:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.07] transition-colors">
+        <svg id="detailPlus" class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+        <svg id="detailClose" class="hidden w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+      </button>
+    </div>
+
+    <main id="stage" class="min-h-screen flex flex-col items-center justify-center pt-[82px] pb-[4vh] transition-transform duration-500 ease-out">
+      <img id="mainPhoto" src="../public/img/lake.jpg" alt="Backwater treeline" class="fade-up h-[70vh] max-h-[calc(100vh-280px)] w-auto max-w-[58vw] object-contain" style="animation-delay:.15s">
+      <a href="index.html" class="fade-up mt-[9vh] text-[34px] font-bold uppercase tracking-[-0.01em] underline decoration-2 underline-offset-[10px] whitespace-nowrap hover:text-ink/60 dark:hover:text-white/60 transition-colors" style="animation-delay:.45s">&larr;&nbsp; Back</a>
+    </main>
+
+    <aside id="detailsPanel" class="fixed right-0 top-[100px] bottom-6 z-20 w-[22vw] min-w-[360px] bg-paper dark:bg-nightpill shadow-[-10px_0_40px_rgba(0,0,0,0.07)] dark:shadow-[-10px_0_40px_rgba(0,0,0,0.5)] overflow-y-auto no-bar translate-x-full transition-transform duration-500 ease-out">
+      <div class="px-8 py-8">
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Landscape</p>
+        <h2 class="mt-3 font-serif italic text-[30px] leading-tight">Ridgeline, Noon</h2>
+        <p class="mt-2 text-[13px] tracking-[0.06em] text-ink/45 dark:text-white/45">HR.01 / 05</p>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>About the photo</p>
+        <p class="mt-3 text-[15px] leading-[1.55] text-ink dark:text-white/90">Wind strong enough to need two hands on the tripod.</p>
+        <p class="mt-5 text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Alternate note</p>
+        <p class="mt-2 text-[15px] leading-[1.55] text-ink/55 dark:text-white/55">The wind dropped for maybe four seconds. That’s the frame.</p>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>About the collection</p>
+        <p class="mt-3 text-[15px] leading-[1.55] text-ink dark:text-white/90">A trek through Spiti tracing the line where rock stops arguing with sky.</p>
+        <a href="#" class="mt-4 inline-block text-[11px] tracking-[0.14em] uppercase hover:opacity-70 transition-opacity" style="color:#c8a03c">View full collection &rarr;</a>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>Camera</p>
+        <p class="mt-3 text-[15px] leading-[1.55] text-ink dark:text-white/90">Canon R5 / <span style="color:#c8a03c">24–70mm f/2.8</span></p>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>Field data</p>
+        <div class="mt-4 grid grid-cols-2 gap-y-5 gap-x-4">
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Date</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90">Sep 4, 2022</p></div>
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Location</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90">Spiti, Himachal Pradesh</p></div>
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Category</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90">Landscape</p></div>
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Settings</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90">1/125 · f/11 · ISO 100</p></div>
+        </div>
+      </div>
+    </aside>
+  <script src="../public/js/app.js"></script>
+</body>
+</html>

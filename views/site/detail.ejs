@@ -1,0 +1,79 @@
+<%# views/detail.ejs — expects: title, photo { src, alt, cap }, photos[] (the rail) %>
+<%- include('partials/head', { title: title }) %>
+<%
+  // rail stagger: [left offset vw, height vw]
+  var rail = [[1.67,4.5],[1.67,6.58],[1.67,3.4],[2.17,6.58],[3.75,3.96],[5.54,3.33],[3.67,3.33],[2.2,6.46],[1.67,6.79],[1.67,3.54]];
+%>
+    <aside id="thumbRail" class="fixed left-0 top-0 z-20 h-screen w-[13vw] overflow-y-auto no-bar py-[1.2vw]">
+      <div class="flex flex-col gap-[1vw]">
+        <% photos.forEach(function (p, i) { var r = rail[i % rail.length]; %>
+          <a href="/photo/<%= p.slug %>" class="group rail-in block shrink-0"
+             style="margin-left:<%= r[0] %>vw; width:4.92vw; height:<%= r[1] %>vw; animation-delay:<%= 60 + i * 55 %>ms">
+            <span class="block w-full h-full overflow-hidden transition-transform duration-300 ease-out group-hover:translate-x-[1.4vw]">
+              <img src="<%= p.src %>" alt="<%= p.alt %>" loading="lazy" class="w-full h-full object-cover select-none">
+            </span>
+          </a>
+        <% }); %>
+      </div>
+    </aside>
+
+    <div class="fixed top-0 right-0 z-30 h-[82px] flex items-center gap-6 pr-7">
+      <button type="button" id="ambientBtn" class="flex items-center gap-2.5 text-[12px] tracking-[0.14em] uppercase text-ink/55 dark:text-white/55 hover:text-ink dark:hover:text-white transition-colors">
+        <svg class="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 14v4M9 8v10M14 11v7M19 5v13"></path></svg>
+        <span class="whitespace-nowrap">Ambient Sound</span>
+      </button>
+
+      <button type="button" id="themeToggle" aria-label="Dark mode" class="text-ink/70 dark:text-white/70 hover:text-ink dark:hover:text-white transition-colors">
+        <svg class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"></path></svg>
+      </button>
+
+      <div class="flex items-center gap-1 p-1 rounded-full border border-black/10 dark:border-white/15 bg-paper dark:bg-nightpill">
+        <button type="button" data-take="edited" class="px-4 py-1.5 rounded-full text-[12px] tracking-[0.1em] uppercase font-medium bg-ink text-white dark:bg-white dark:text-ink transition-colors">Edited</button>
+        <button type="button" data-take="raw" class="px-4 py-1.5 rounded-full text-[12px] tracking-[0.1em] uppercase text-ink/45 dark:text-white/45 hover:text-ink/75 dark:hover:text-white/75 transition-colors">Raw</button>
+      </div>
+
+      <button type="button" id="detailToggle" aria-label="Details" class="w-11 h-11 rounded-full border border-black/10 dark:border-white/15 bg-paper dark:bg-nightpill grid place-items-center text-ink dark:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.07] transition-colors">
+        <svg id="detailPlus" class="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+        <svg id="detailClose" class="hidden w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+      </button>
+    </div>
+
+    <main id="stage" class="min-h-screen flex flex-col items-center justify-center pt-[82px] pb-[4vh] transition-transform duration-500 ease-out">
+      <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>" class="fade-up h-[70vh] max-h-[calc(100vh-280px)] w-auto max-w-[58vw] object-contain" style="animation-delay:.15s">
+      <a href="/" class="fade-up mt-[9vh] text-[34px] font-bold uppercase tracking-[-0.01em] underline decoration-2 underline-offset-[10px] whitespace-nowrap hover:text-ink/60 dark:hover:text-white/60 transition-colors" style="animation-delay:.45s">&larr;&nbsp; Back</a>
+    </main>
+<% var d = details; %>
+    <aside id="detailsPanel" class="fixed right-0 top-[100px] bottom-6 z-20 w-[22vw] min-w-[360px] bg-paper dark:bg-nightpill shadow-[-10px_0_40px_rgba(0,0,0,0.07)] dark:shadow-[-10px_0_40px_rgba(0,0,0,0.5)] overflow-y-auto no-bar translate-x-full transition-transform duration-500 ease-out">
+      <div class="px-8 py-8">
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><%= d.kicker %></p>
+        <h2 class="mt-3 font-serif italic text-[30px] leading-tight"><%= d.title %></h2>
+        <p class="mt-2 text-[13px] tracking-[0.06em] text-ink/45 dark:text-white/45"><%= d.ref %></p>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>About the photo</p>
+        <p class="mt-3 text-[15px] leading-[1.55] text-ink dark:text-white/90"><%= d.about %></p>
+        <p class="mt-5 text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Alternate note</p>
+        <p class="mt-2 text-[15px] leading-[1.55] text-ink/55 dark:text-white/55"><%= d.altNote %></p>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>About the collection</p>
+        <p class="mt-3 text-[15px] leading-[1.55] text-ink dark:text-white/90"><%= d.collection %></p>
+        <a href="<%= d.collectionHref %>" class="mt-4 inline-block text-[11px] tracking-[0.14em] uppercase hover:opacity-70 transition-opacity" style="color:#c8a03c">View full collection &rarr;</a>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>Camera</p>
+        <p class="mt-3 text-[15px] leading-[1.55] text-ink dark:text-white/90"><%= d.camera %> / <span style="color:#c8a03c"><%= d.lens %></span></p>
+
+        <div class="my-6 border-t border-dashed border-black/15 dark:border-white/15"></div>
+        <p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45"><span class="inline-block w-[5px] h-[5px] rounded-full align-middle mr-2" style="background:#c8a03c"></span>Field data</p>
+        <div class="mt-4 grid grid-cols-2 gap-y-5 gap-x-4">
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Date</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90"><%= d.date %></p></div>
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Location</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90"><%= d.location %></p></div>
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Category</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90"><%= d.category %></p></div>
+          <div><p class="text-[11px] tracking-[0.14em] uppercase text-ink/45 dark:text-white/45">Settings</p><p class="mt-1.5 text-[15px] leading-[1.55] text-ink dark:text-white/90"><%= d.settings %></p></div>
+        </div>
+      </div>
+    </aside>
+  <script src="/js/app.js"></script>
+</body>
+</html>

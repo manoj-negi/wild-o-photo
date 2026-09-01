@@ -1,0 +1,26 @@
+<%# views/index.ejs — flow view. expects: title, photos[] { src, alt, l, t, w, h } (vw units), cameras[] %>
+<%- include('partials/head', { title: title }) %>
+<%- include('partials/header', { view: 'flow' }) %>
+  <main class="pt-[74px]">
+    <div id="flowCanvas" class="relative w-full" style="height:73.2vw">
+      <% photos.forEach(function (p) { %>
+        <a href="/photo/<%= p.slug %>" class="group absolute block"
+           style="left:<%= p.l %>vw; top:<%= p.t %>vw; width:<%= p.w %>vw; height:<%= p.h %>vw">
+          <span class="block w-full h-full overflow-hidden">
+            <img src="<%= p.src %>" alt="<%= p.alt %>" loading="lazy" class="w-full h-full object-cover select-none">
+          </span>
+          <span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+            <span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">
+              <svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+            </span>
+          </span>
+          <span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -left-[12px] w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+          <span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+          <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+          <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+          <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
+        </a>
+      <% }); %>
+    </div>
+  </main>
+<%- include('partials/footer', { cameras: cameras, cameraOpen: false }) %>
