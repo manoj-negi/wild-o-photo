@@ -11,12 +11,26 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1125.0",
+    "bcrypt": "^6.0.0",
+    "cookie-parser": "^1.4.7",
+    "db-migrate-mysql": "^3.0.0",
+    "dotenv": "^17.4.2",
     "ejs": "^3.1.10",
-    "express": "^4.19.2"
+    "express": "^4.19.2",
+    "express-session": "^1.19.0",
+    "multer": "^2.3.0",
+    "mysql2": "^3.24.2",
+    "nodemon": "^3.1.14"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^4.17.21",
+    "@types/express-session": "^1.19.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^22.10.2",
+    "ts-node": "^10.9.2",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

@@ -1,10 +1,33 @@
 import { Router, type Request } from "express";
+import authController from "../controllers/authController";
+import pool from "../db";
+import authenticate from "../middleware/authenticate";
+import upload from "../config/multer";
+import s3 from "../config/s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 
 import photos from "../data/admin-photos";
 import categories from "../data/categories";
 import type { AdminPhoto, MetaItem } from "../types/admin";
 
 const router = Router();
+
+
+router.get("/login",(req, res)=>{
+
+  res.render("login")
+
+});
+router.get("/", (req, res)=>{
+  res.render("signup")
+  
+})
+
+router.post("/submit-form", authController.signup);
+
+router.post("/log-in", authController.login);
+
+router.post("/logout", authController.logout)
 
 const slugify = (s: string): string =>
   String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -48,46 +71,80 @@ const blankPhoto = (): AdminPhoto => ({
   ]
 });
 
-router.get("/", (req, res) => res.redirect("/admin/photos"));
+//router.get("/", (req, res) => res.redirect("/admin/photos"));
+
+router.get("/admin", (req, res)=>
+   {res.redirect("/signup")});
 
 // ---- Photos ----------------------------------------------------------------
 
-router.get("/photos", (req, res) => {
+router.get("/photos", authenticate,  (req, res) => {
   res.render("photos", { nav: "photos", photos, categories, flash: req.query.flash || "" });
 });
 
-router.get("/photos/new", (req, res) => {
+router.get("/photos/new", authenticate, (req, res) => {
   res.render("photo-form", { nav: "add", mode: "add", photo: blankPhoto(), categories });
 });
 
-router.get("/photos/:slug/edit", (req, res) => {
+router.get("/photos/:slug/edit", authenticate, (req, res) => {
   const photo = photos.find(p => p.slug === req.params.slug);
   if (!photo) return res.status(404).send("Photo not found");
   res.render("photo-form", { nav: "photos", mode: "edit", photo, categories });
 });
 
-router.post("/photos", (req, res) => {
+router.post("/photos", authenticate, upload.single("photo"), async (req, res) => {
+      try{
+
+        if(!req.file){
+         return res.status(400).send("Photo is required!")
+        }
+
+        const file = req.file;
+         const key = `photos/${Date.now()}-${file.originalname}`;
+
+          const command = new PutObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      });
+
+       await s3.send(command);
+
+       console.log("Photo uploaded to S3:", key);
+
+
+       
   const p = readPhoto(req.body);
+
   if (!p.slug) return res.redirect("/admin/photos/new");
+
   const live = req.body.live !== "draft";
+
   photos.push({ ...p, live });
+
   res.redirect("/admin/photos?flash=Photo+added");
+      } catch(error){
+
+        console.error("S3 upload failed:", error);
+        res.status(500).send("Photo upload failed!")
+      }
 });
 
-router.post("/photos/:slug", (req, res) => {
+router.post("/photos/:slug", authenticate, (req, res) => {
   const i = photos.findIndex(p => p.slug === req.params.slug);
   if (i === -1) return res.status(404).send("Photo not found");
   photos[i] = { ...photos[i], ...readPhoto(req.body), live: req.body.live !== "draft" };
   res.redirect("/admin/photos?flash=Photo+saved");
 });
 
-router.post("/photos/:slug/toggle", (req, res) => {
+router.post("/photos/:slug/toggle", authenticate, (req, res) => {
   const p = photos.find(x => x.slug === req.params.slug);
   if (p) p.live = !p.live;
   res.redirect("/admin/photos");
 });
 
-router.post("/photos/:slug/delete", (req, res) => {
+router.post("/photos/:slug/delete", authenticate, (req, res) => {
   const i = photos.findIndex(p => p.slug === req.params.slug);
   if (i > -1) photos.splice(i, 1);
   res.redirect("/admin/photos?flash=Photo+deleted");
@@ -95,12 +152,12 @@ router.post("/photos/:slug/delete", (req, res) => {
 
 // ---- Categories ------------------------------------------------------------
 
-router.get("/categories", (req, res) => {
+router.get("/categories", authenticate, (req, res) => {
   const sel = Math.min(Math.max(parseInt(String(req.query.sel || "0"), 10) || 0, 0), Math.max(categories.length - 1, 0));
   res.render("categories", { nav: "categories", photos, categories, sel, flash: req.query.flash || "" });
 });
 
-router.post("/categories", (req, res) => {
+router.post("/categories", authenticate, (req, res) => {
   const title = (req.body.title || "").trim();
   if (!title) return res.redirect("/admin/categories");
   categories.push({
@@ -111,7 +168,7 @@ router.post("/categories", (req, res) => {
   res.redirect("/admin/categories?sel=" + (categories.length - 1) + "&flash=Category+created");
 });
 
-router.post("/categories/:index", (req, res) => {
+router.post("/categories/:index", authenticate, (req, res) => {
   const i = parseInt(req.params.index, 10);
   if (!categories[i]) return res.status(404).send("Category not found");
   categories[i] = {
@@ -122,7 +179,7 @@ router.post("/categories/:index", (req, res) => {
   res.redirect("/admin/categories?sel=" + i + "&flash=Category+saved");
 });
 
-router.post("/categories/:index/delete", (req, res) => {
+router.post("/categories/:index/delete", authenticate, (req, res) => {
   const i = parseInt(req.params.index, 10);
   if (categories[i]) categories.splice(i, 1);
   res.redirect("/admin/categories?flash=Category+deleted");

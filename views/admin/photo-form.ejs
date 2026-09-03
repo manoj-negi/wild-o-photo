@@ -7,7 +7,7 @@
     <%- include("partials/sidebar", { nav: nav, photos: [], categories: categories }) %>
 
     <main class="min-w-0 px-7 pb-11 pt-6">
-      <form id="photo-form" method="post"
+      <form id="photo-form" method="post"  enctype="multipart/form-data"
             action="<%= isEdit ? '/admin/photos/' + photo.slug : '/admin/photos' %>">
         <div class="mb-4 flex items-end justify-between gap-4">
           <div>
@@ -113,7 +113,7 @@
                 <div class="flex items-center justify-between gap-2.5 text-xs text-mute">
                   <span><%= photo.src %></span>
                   <label class="cursor-pointer rounded-full border border-line2 bg-white px-3 py-1.5 text-xs">
-                    Replace<input type="file" name="file" accept="image/jpeg" class="hidden">
+                    Replace<input type="file" name="photo" accept="image/jpeg" class="hidden">
                   </label>
                 </div>
               <% } else { %>
@@ -121,7 +121,7 @@
                   <div class="mb-1.5 text-sm font-semibold">Drop a JPEG here</div>
                   <div class="mb-3.5 text-xs text-mute">Saved to /public/img · 4000px longest edge</div>
                   <label class="inline-block cursor-pointer rounded-full bg-pine px-4 py-2.5 text-xs text-cream">
-                    Choose file<input type="file" name="file" accept="image/jpeg" class="hidden">
+                    Choose file<input type="file" name="photo" accept="image/jpeg" class="hidden">
                   </label>
                 </div>
               <% } %>
