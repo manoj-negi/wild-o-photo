@@ -22,7 +22,10 @@ exports.up = function (db) {
       name VARCHAR(255) NOT NULL,
       description TEXT,
 
-      cover_photo_id INT
+      cover_photo_id INT,
+
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 };

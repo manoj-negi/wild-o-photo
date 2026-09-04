@@ -37,6 +37,9 @@ exports.up = function (db) {
 
       published_at TIMESTAMP,
 
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
       CONSTRAINT fk_photos_category
         FOREIGN KEY (category_id)
         REFERENCES categories(id),

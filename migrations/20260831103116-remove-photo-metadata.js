@@ -50,6 +50,9 @@ exports.down = function (db) {
         shutter_speed VARCHAR(50),
         focal_length VARCHAR(50),
 
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
         CONSTRAINT fk_photo_metadata_photo
           FOREIGN KEY (photo_id)
           REFERENCES photos(id)

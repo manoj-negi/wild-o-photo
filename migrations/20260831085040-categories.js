@@ -14,7 +14,10 @@ exports.up = function (db) {
       id INT PRIMARY KEY AUTO_INCREMENT,
 
       name VARCHAR(255) UNIQUE NOT NULL,
-      description TEXT
+      description TEXT,
+
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 };
@@ -23,10 +26,6 @@ exports.down = function (db) {
   return db.runSql(`
     DROP TABLE categories
   `);
-};
-
-exports.down = function (db) {
-  return null;
 };
 
 exports._meta = {

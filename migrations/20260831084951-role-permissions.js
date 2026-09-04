@@ -28,7 +28,10 @@ exports.up = function (db) {
 
       CONSTRAINT fk_role_permissions_permission
         FOREIGN KEY (permission_id)
-        REFERENCES permissions(id)
+        REFERENCES permissions(id),
+
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `);
 };

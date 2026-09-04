@@ -14,14 +14,28 @@ exports.setup = function (options, seedLink) {
   seed = seedLink;
 };
 exports.up = function (db) {
-  return db.runSql(`
+  return db
+    .runSql(
+      `
     CREATE TABLE roles (
       id INT PRIMARY KEY AUTO_INCREMENT,
 
       name VARCHAR(255) UNIQUE NOT NULL,
-      description TEXT
+      description TEXT,
+
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
-  `);
+  `,
+    )
+    .then(function () {
+      return db.runSql(`
+      INSERT INTO roles (name, description) VALUES
+        ('admin', 'Administrator with full system access'),
+        ('user', 'Standard user with basic access'),
+        ('editor', 'Editor with content management access')
+    `);
+    });
 };
 
 exports.down = function (db) {
