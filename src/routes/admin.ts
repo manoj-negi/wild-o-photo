@@ -13,15 +13,17 @@ import type { AdminPhoto, MetaItem } from "../types/admin";
 const router = Router();
 
 
-router.get("/login",(req, res)=>{
-
-  res.render("login")
-
+router.get("/login", (req, res) => {
+  res.render("login");
 });
-router.get("/", (req, res)=>{
-  res.render("signup")
-  
-})
+
+router.get("/signup", (req, res) => {
+  res.render("signup");
+});
+
+router.get("/", (req, res) => {
+  res.render("signup");
+});
 
 router.post("/submit-form", authController.signup);
 
@@ -70,11 +72,6 @@ const blankPhoto = (): AdminPhoto => ({
     { key: "Location", value: "" }
   ]
 });
-
-//router.get("/", (req, res) => res.redirect("/admin/photos"));
-
-router.get("/admin", (req, res)=>
-   {res.redirect("/signup")});
 
 // ---- Photos ----------------------------------------------------------------
 

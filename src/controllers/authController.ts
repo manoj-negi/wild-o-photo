@@ -2,139 +2,151 @@ import pool from "../db";
 import bcrypt from "bcrypt";
 import { Request, Response } from "express";
 import { RowDataPacket } from "mysql2";
+
 interface PasswordRow extends RowDataPacket {
-    password_hash: string;
+  id: number;
+  password_hash: string;
+  role_name: string;
 }
 
 interface SignupBody {
-    username: string;
-    role: string;
-    email: string;
-    password: string;
-}
-interface LoginBody{
-  
-    email : string;
-    password: string;
+  username?: string;
+  role?: string;
+  email?: string;
+  password?: string;
 }
 
-interface RoleRow {
-    id: number;
-    name: string;
+interface LoginBody {
+  email?: string;
+  password?: string;
+}
+
+interface RoleRow extends RowDataPacket {
+  id: number;
+  name: string;
 }
 
 const signup = async (
-    req: Request<{}, {}, SignupBody>,
-    res: Response
+  req: Request<{}, {}, SignupBody>,
+  res: Response
 ) => {
-    try {
-        const {
-            username, role, email, password } = req.body;
+  try {
+    const username = (req.body.username || "").trim();
+    const email = (req.body.email || "").trim().toLowerCase();
+    const password = req.body.password || "";
+    const roleInput = (req.body.role || "admin").trim().toLowerCase();
 
-        // Hash password
-        const passwordHash = await bcrypt.hash(password, 10);
-
-        // Find role ID
-        const [rows] = await pool.query(
-            "SELECT id, name FROM roles WHERE name = ?",[role]);
-
-        const roleRows = rows as RoleRow[];
-
-        if (roleRows.length === 0) {
-            return res.status(400).json({
-                error: "Role not found"
-            });
-        }
-
-        const roleId = roleRows[0].id;
-
-        // Create user
-        await pool.query(
-            `INSERT INTO users
-            (username, role_id, email, password_hash)
-            VALUES (?, ?, ?, ?)`,
-            [username, roleId, email, passwordHash]);
-
-        // Signup successful
-        res.redirect("/admin/login");
-
-    } catch (err: unknown) {
-
-        if (err instanceof Error) {
-            res.status(500).json({
-                error: err.message
-            });
-        } else {
-            res.status(500).json({
-                error: "Something went wrong"
-            });
-        }
+    if (!username || !email || !password) {
+      return res.status(400).render("signup", {
+        error: "Username, email, and password are required."
+      });
     }
+
+    // Find role ID
+    const [rows] = await pool.query<RoleRow[]>(
+      "SELECT id, name FROM roles WHERE LOWER(name) = ?",
+      [roleInput]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).render("signup", {
+        error: `Role "${roleInput}" does not exist.`
+      });
+    }
+
+    const roleId = rows[0].id;
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Create user
+    await pool.query(
+      `INSERT INTO users (username, role_id, email, password_hash)
+       VALUES (?, ?, ?, ?)`,
+      [username, roleId, email, passwordHash]
+    );
+
+    // Signup successful
+    return res.redirect("/admin/login");
+
+  } catch (err: any) {
+    console.error("Signup error:", err);
+
+    // Handle MySQL duplicate key error
+    if (err && (err.code === "ER_DUP_ENTRY" || err.errno === 1062)) {
+      return res.status(400).render("signup", {
+        error: "Username or email is already registered."
+      });
+    }
+
+    return res.status(500).render("signup", {
+      error: "Something went wrong during signup. Please try again."
+    });
+  }
 };
 
 
 const login = async (
-     req: Request<{}, {}, LoginBody>,
-    res: Response
+  req: Request<{}, {}, LoginBody>,
+  res: Response
 ) => {
+  try {
+    const email = (req.body.email || "").trim().toLowerCase();
+    const password = req.body.password || "";
 
-    try{
-   const {email, password} = req.body;
-
-        const [adminData] = await pool.query<PasswordRow[]>(
-    "SELECT u.password_hash, u.id, r.name AS role_name FROM users u LEFT JOIN roles r ON u.role_id = r.id WHERE email = ?",
-    [email]
-);
-          
-          if (adminData.length === 0) {
-              return res.status(401).send("Invalid email or password");
-}
-         const hashPassword = adminData[0].password_hash
-       
-        const isPasswordCorrect =  bcrypt.compareSync(password, hashPassword);
-
-        if(isPasswordCorrect){
-         
-        req.session.userId = adminData[0].id;
-        req.session.role = adminData[0].role_name;
-
-              res.redirect("/admin/photos")
-        } else{
-            res.send("wrong password!")
-        }
-
-
-    } catch (err: unknown) {
-
-        if (err instanceof Error) {
-            res.status(500).json({
-                error: err.message
-            });
-        } else {
-            res.status(500).json({
-                error: "Something went wrong"
-            });
-        }
+    if (!email || !password) {
+      return res.status(400).render("login", {
+        error: "Email and password are required."
+      });
     }
 
+    const [adminData] = await pool.query<PasswordRow[]>(
+      `SELECT u.id, u.password_hash, r.name AS role_name
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE LOWER(u.email) = ?`,
+      [email]
+    );
 
+    if (adminData.length === 0) {
+      return res.status(401).render("login", {
+        error: "Invalid email or password."
+      });
+    }
 
+    const user = adminData[0];
+    const isPasswordCorrect = await bcrypt.compare(password, user.password_hash);
 
+    if (isPasswordCorrect) {
+      req.session.userId = user.id;
+      req.session.role = user.role_name;
+      return res.redirect("/admin/photos");
+    } else {
+      return res.status(401).render("login", {
+        error: "Invalid email or password."
+      });
+    }
+
+  } catch (err: unknown) {
+    console.error("Login error:", err);
+    return res.status(500).render("login", {
+      error: "Something went wrong during login. Please try again."
+    });
+  }
 };
 
-const logout = (req: Request, res: Response)=>{
-
-  req.session.destroy((err)=>{
-    if(err){
-        return res.status(500).send("could not log out")
+const logout = (req: Request, res: Response) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).send("Could not log out.");
     }
     res.clearCookie("connect.sid");
-    res.redirect("/admin/login")
-  } );
-}
+    return res.redirect("/admin/login");
+  });
+};
 
 export default {
-    signup,
-    login,
-    logout
+  signup,
+  login,
+  logout
 };
