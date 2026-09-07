@@ -290,100 +290,163 @@
       return unit > 0 ? Math.max(1, Math.floor(viewport.clientHeight / unit)) : 4;
     }
 
-    /* ── Slide the track to show startIdx at top ─────────────────────── */
-    function slideTo(idx, animate) {
-      var total = thumbs.length;
-      var vis   = visibleCount();
-      idx = Math.max(0, Math.min(idx, total - vis));
-      currentIdx = idx;
+    /* ── Slide the track so active thumb is centered vertically ─────── */
+    function centerThumb(idx, animate) {
+      var activeThumb = thumbs[idx];
+      if (!activeThumb) return;
 
-      var unit   = thumbUnitHeight();
-      var offset = idx * unit;
+      var thumbOffsetTop = activeThumb.offsetTop;
+      var thumbHeight = activeThumb.offsetHeight;
+      var viewportHeight = viewport.clientHeight;
+
+      // Calculate translation so active thumbnail sits in exact vertical center of viewport
+      var targetY = (viewportHeight / 2) - (thumbOffsetTop + thumbHeight / 2);
+
       track.style.transition = animate === false
         ? 'none'
-        : 'transform 0.5s cubic-bezier(.2,.7,.2,1)';
-      track.style.transform = 'translateY(-' + offset + 'px)';
-
-      // Dim arrows at boundaries
-      if (prevBtn) prevBtn.style.opacity = idx <= 0 ? '0.2' : '1';
-      if (nextBtn) nextBtn.style.opacity = idx >= total - vis ? '0.2' : '1';
+        : 'transform 0.45s cubic-bezier(.2,.7,.2,1)';
+      track.style.transform = 'translateY(' + targetY + 'px)';
     }
 
     /* ── Mark active thumb ───────────────────────────────────────────── */
     function markActive(th) {
       thumbs.forEach(function (el) {
-        var sp = el.querySelector('span');
-        if (sp) sp.style.transform = el === th ? 'translateX(1.4vw)' : '';
+        var isActive = (el === th);
+        el.classList.toggle('ring-2', isActive);
+        el.classList.toggle('ring-amber-500', isActive);
+        el.classList.toggle('scale-[1.1]', isActive);
+        el.classList.toggle('z-10', isActive);
+        el.classList.toggle('opacity-70', !isActive);
       });
     }
 
-    /* ── Select thumb: update main photo ─────────────────────────────── */
+    /* ── Select thumb: update main photo & right side panel ─────────── */
     function selectThumb(th) {
-      if (!mainPhoto) return;
-      var src = th.getAttribute('data-src');
-      var alt = th.getAttribute('data-alt');
-      var href = th.getAttribute('data-href');
-      mainPhoto.src = src;
-      mainPhoto.alt = alt || '';
-      mainPhoto.style.animationDelay = '0s';
-      mainPhoto.classList.remove('fade-up');
-      void mainPhoto.offsetWidth;
-      mainPhoto.classList.add('fade-up');
+      if (!th) return;
+      
+      // Update Main Photo with Fade Animation
+      if (mainPhoto) {
+        var src = th.getAttribute('data-src');
+        var alt = th.getAttribute('data-alt');
+        mainPhoto.src = src;
+        mainPhoto.alt = alt || '';
+        mainPhoto.style.animationDelay = '0s';
+        mainPhoto.classList.remove('fade-up');
+        void mainPhoto.offsetWidth;
+        mainPhoto.classList.add('fade-up');
+      }
+
+      // Update Right Side Details Panel text (only update DOM values; do not force panel open on scroll)
+      var panel = document.getElementById('detailsPanel');
+      if (panel) {
+        var elKicker = panel.querySelector('[data-field="kicker"]');
+        var elTitle = panel.querySelector('[data-field="title"]');
+        var elRef = panel.querySelector('[data-field="ref"]');
+        var elAbout = panel.querySelector('[data-field="about"]');
+        var elAltNote = panel.querySelector('[data-field="altNote"]');
+        var elCollection = panel.querySelector('[data-field="collection"]');
+        var elCamera = panel.querySelector('[data-field="camera"]');
+        var elDate = panel.querySelector('[data-field="date"]');
+        var elLocation = panel.querySelector('[data-field="location"]');
+        var elCategory = panel.querySelector('[data-field="category"]');
+        var elSettings = panel.querySelector('[data-field="settings"]');
+
+        if (elKicker && th.dataset.kicker) elKicker.textContent = th.dataset.kicker;
+        if (elTitle && th.dataset.title) elTitle.textContent = th.dataset.title;
+        if (elRef && th.dataset.ref) elRef.textContent = th.dataset.ref;
+        if (elAbout && th.dataset.about !== undefined) elAbout.textContent = th.dataset.about;
+        if (elAltNote && th.dataset.altnote !== undefined) elAltNote.textContent = th.dataset.altnote;
+        if (elCollection && th.dataset.collection !== undefined) elCollection.textContent = th.dataset.collection;
+        
+        if (elCamera && th.dataset.camera && th.dataset.lens) {
+          elCamera.innerHTML = th.dataset.camera + ' / <span class="text-amber-600 dark:text-amber-400">' + th.dataset.lens + '</span>';
+        }
+
+        if (elDate && th.dataset.date) elDate.textContent = th.dataset.date;
+        if (elLocation && th.dataset.location) elLocation.textContent = th.dataset.location;
+        if (elCategory && th.dataset.category) elCategory.textContent = th.dataset.category;
+        if (elSettings && th.dataset.settings) elSettings.textContent = th.dataset.settings;
+      }
+
       markActive(th);
+      var href = th.getAttribute('data-href');
       if (href && window.history.replaceState) window.history.replaceState(null, '', href);
     }
 
-    /* ── Init: position so active thumb is visible ───────────────────── */
+    /* ── Calculate dynamic margin offset based on distance from activeIdx ─ */
+    /* Active photo = 34px indent (peak), 1 away = 22px, 2+ away = 8px */
+    var offsetsPattern = [34, 22, 8];
+    function updateDynamicLayout() {
+      var n = thumbs.length;
+      thumbs.forEach(function (el, i) {
+        var dist = Math.abs(i - activeIdx);
+        // Also account for circular wrap-around distance
+        dist = Math.min(dist, n - dist);
+
+        var ml = (dist < offsetsPattern.length) ? offsetsPattern[dist] : 8;
+        el.style.transition = 'margin-left 0.4s ease-out, transform 0.3s ease-out, opacity 0.3s ease-out';
+        el.style.marginLeft = ml + 'px';
+        el.style.width = '50px';
+        el.style.height = '52px';
+      });
+    }
+
+    /* ── Switch active index & center rail ──────────────────────────── */
+    function setActivePhoto(idx) {
+      var n = thumbs.length;
+      if (n === 0) return;
+      activeIdx = ((idx % n) + n) % n; // Circular modulo wrap around
+      var th = thumbs[activeIdx];
+      selectThumb(th);
+      updateDynamicLayout();
+      centerThumb(activeIdx, true);
+    }
+
+    /* ── Init: center active thumb on load & set initial dynamic layout ── */
     function init() {
-      var vis = visibleCount();
-      // Center active thumb in the viewport
-      var startIdx = Math.max(0, Math.min(activeIdx - Math.floor(vis / 2), thumbs.length - vis));
-      slideTo(startIdx, false);
+      updateDynamicLayout();
+      centerThumb(activeIdx, false);
       markActive(thumbs[activeIdx]);
     }
 
-    /* Wait one frame so layout is ready */
     requestAnimationFrame(function () { setTimeout(init, 60); });
 
-    /* ── Arrow buttons ───────────────────────────────────────────────── */
-    if (prevBtn) {
-      prevBtn.addEventListener('click', function () { slideTo(currentIdx - STEP, true); });
-    }
-    if (nextBtn) {
-      nextBtn.addEventListener('click', function () { slideTo(currentIdx + STEP, true); });
-    }
+    /* ── Page-wide Mouse-wheel navigation (Infinite Circular Loop) ─────── */
+    var lastWheelTime = 0;
+    document.addEventListener('wheel', function (e) {
+      // Don't trigger when scrolling inside details panel
+      if (e.target.closest('#detailsPanel')) return;
+      var now = Date.now();
+      if (now - lastWheelTime < 250) return; // Debounce wheel
+      lastWheelTime = now;
 
-    /* ── Mouse-wheel on the rail ─────────────────────────────────────── */
-    var rail = document.getElementById('thumbRail');
-    if (rail) {
-      rail.addEventListener('wheel', function (e) {
-        e.preventDefault();
-        if (e.deltaY > 0) slideTo(currentIdx + STEP, true);
-        else               slideTo(currentIdx - STEP, true);
-      }, { passive: false });
-    }
+      if (e.deltaY > 0) {
+        setActivePhoto(activeIdx + 1);
+      } else if (e.deltaY < 0) {
+        setActivePhoto(activeIdx - 1);
+      }
+    }, { passive: true });
 
-    /* ── Keyboard: arrow keys while hovering rail ────────────────────── */
+    /* ── Keyboard: arrow keys navigate photos (Infinite Circular Loop) ──── */
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowUp')   slideTo(currentIdx - STEP, true);
-      if (e.key === 'ArrowDown') slideTo(currentIdx + STEP, true);
+      if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        setActivePhoto(activeIdx - 1);
+      }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        setActivePhoto(activeIdx + 1);
+      }
     });
 
     /* ── Click a thumb ───────────────────────────────────────────────── */
     thumbs.forEach(function (th, i) {
       th.addEventListener('click', function (e) {
         e.preventDefault();
-        activeIdx = i;
-        selectThumb(th);
-        // Scroll slider to keep clicked thumb in view
-        var vis = visibleCount();
-        if (i < currentIdx) slideTo(i, true);
-        else if (i >= currentIdx + vis) slideTo(i - vis + 1, true);
+        setActivePhoto(i);
       });
     });
   })();
 
-  /* ── Detail page — details panel ─────────────────────────────────── */
+  /* ── Detail page — details panel drawer ──────────────────────────── */
   var panel = document.getElementById('detailsPanel');
   var pBtn  = document.getElementById('detailToggle');
   var stage = document.getElementById('stage');
@@ -391,22 +454,21 @@
     var plusIcon  = document.getElementById('detailPlus');
     var closeIcon = document.getElementById('detailClose');
     pBtn.addEventListener('click', function () {
-      var open = panel.classList.toggle('translate-x-full');
-      open = !open;
-      if (plusIcon)  plusIcon.classList.toggle('hidden', open);
-      if (closeIcon) closeIcon.classList.toggle('hidden', !open);
-      pBtn.classList.toggle('bg-ink', open);
-      pBtn.classList.toggle('text-white', open);
-      pBtn.classList.toggle('bg-paper', !open);
-      if (stage) {
-        if (!open) { stage.style.transform = ''; return; }
-        var img = document.getElementById('mainPhoto');
-        var shift = window.innerWidth * 0.054;
-        if (img) {
-          var panelLeft = window.innerWidth - panel.offsetWidth;
-          shift = Math.max(shift, img.getBoundingClientRect().right - panelLeft + 24);
-        }
-        stage.style.transform = 'translateX(-' + Math.round(shift) + 'px)';
+      var isCurrentlyClosed = panel.classList.contains('translate-x-full');
+      if (isCurrentlyClosed) {
+        // Open drawer
+        panel.classList.remove('translate-x-full');
+        if (plusIcon) plusIcon.classList.add('hidden');
+        if (closeIcon) closeIcon.classList.remove('hidden');
+        pBtn.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black');
+        if (stage) stage.style.paddingRight = '380px';
+      } else {
+        // Close drawer
+        panel.classList.add('translate-x-full');
+        if (plusIcon) plusIcon.classList.remove('hidden');
+        if (closeIcon) closeIcon.classList.add('hidden');
+        pBtn.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black');
+        if (stage) stage.style.paddingRight = '120px';
       }
     });
     document.addEventListener('keydown', function (e) {

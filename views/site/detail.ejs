@@ -1,114 +1,183 @@
 <%# views/detail.ejs — expects: title, photo { src, alt, cap }, photos[] (the rail), details %>
-<%- include('partials/head', { title: title }) %>
+  <%- include('partials/head', { title: title }) %>
 
     <%# ── Left thumbnail slider — organic staggered layout like reference ─── %>
-    <aside id="thumbRail" class="fixed left-0 top-0 bottom-0 z-20 w-[6vw] min-w-[80px] max-w-[110px] flex flex-col justify-center select-none py-4">
+      <aside id="thumbRail"
+        class="fixed left-0 top-0 bottom-0 z-20 w-[8vw] min-w-[110px] max-w-[130px] flex flex-col justify-center select-none py-4 px-2">
 
-      <%# Slider viewport %>
-      <div id="railViewport" class="overflow-hidden w-full max-h-[92vh] flex flex-col">
-        <div id="railTrack" class="flex flex-col gap-[6px] transition-transform duration-500 ease-[cubic-bezier(.2,.7,.2,1)] py-1">
-          <%
-            /* Each entry: [marginLeft, width, height] — deliberately organic like the reference */
-            var railLayout = [
-              [8,  62, 50],   /* landscape — flush left */
-              [6,  52, 58],   /* portrait-ish */
-              [10, 58, 42],   /* wide landscape */
-              [14, 64, 52],   /* slightly indented square-ish */
-              [22, 58, 56],   /* more indented */
-              [34, 50, 44],   /* pushed right significantly (like the Eiffel Tower thumb) */
-              [18, 54, 48],   /* medium indent */
-              [4,  50, 62],   /* back left, portrait */
-              [10, 60, 40],   /* landscape */
-              [8,  48, 54],   /* slight indent, portrait */
-              [2,  56, 50],   /* flush left, landscape */
-            ];
-            photos.forEach(function (p, i) {
-              var lay = railLayout[i % railLayout.length];
-          %>
-            <a href="/photo/<%= p.slug %>" class="rail-thumb rail-in group block shrink-0 overflow-hidden transition-all duration-300"
-               data-src="<%= p.src %>" data-alt="<%= p.alt %>" data-href="/photo/<%= p.slug %>"
-               style="margin-left:<%= lay[0] %>px; width:<%= lay[1] %>px; height:<%= lay[2] %>px;">
-              <img src="<%= p.src %>" alt="<%= p.alt %>" loading="lazy"
-                   class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
-            </a>
-          <% }); %>
+        <%# Slider viewport %>
+          <div id="railViewport" class="overflow-hidden w-full max-h-[92vh] flex flex-col py-1">
+            <div id="railTrack"
+              class="flex flex-col gap-[6px] transition-transform duration-500 ease-[cubic-bezier(.2,.7,.2,1)] py-1">
+              <% var railLayout=[ [8, 50, 52], [8, 50, 52], [8, 50, 52], [8, 50, 52], [22, 50, 52], [34, 50, 52], [22,
+                50, 52], [8, 50, 52], [8, 50, 52] ]; photos.forEach(function (p, i) { var lay=railLayout[i %
+                railLayout.length]; var isActive=(p.slug===photo.slug); var dData=p.details || details || {}; %>
+                <a href="/photo/<%= p.slug %>"
+                  class="rail-thumb rail-in group block shrink-0 overflow-hidden transition-all duration-300 relative rounded-sm <%= isActive ? 'ring-2 ring-amber-500 scale-[1.05]' : 'opacity-70 hover:opacity-100' %>"
+                  data-src="<%= p.src %>" data-alt="<%= p.alt %>" data-href="/photo/<%= p.slug %>"
+                  data-title="<%= dData.title || p.title || '' %>" data-kicker="<%= dData.kicker || 'LANDSCAPE' %>"
+                  data-ref="<%= dData.ref || 'REF: WILD-' + (i + 101) %>" data-about="<%= dData.about || '' %>"
+                  data-altnote="<%= dData.altNote || '' %>" data-collection="<%= dData.collection || '' %>"
+                  data-collectionhref="<%= dData.collectionHref || '#' %>"
+                  data-camera="<%= dData.camera || 'SONY A7IV' %>"
+                  data-lens="<%= dData.lens || 'FE 24-70MM F2.8 GM II' %>"
+                  data-date="<%= dData.date || 'OCTOBER 2024' %>" data-location="<%= dData.location || 'GLOBAL' %>"
+                  data-category="<%= dData.category || 'WILDLIFE' %>"
+                  data-settings="<%= dData.settings || 'f/2.8 · 1/1000s · ISO 100' %>"
+                  style="margin-left:<%= lay[0] %>px; width:<%= lay[1] %>px; height:<%= lay[2] %>px;">
+                  <img src="<%= p.src %>" alt="<%= p.alt %>" loading="lazy"
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
+                </a>
+                <% }); %>
+            </div>
+          </div>
+
+      </aside>
+
+      <%# ── Top-right controls ─────────────────────────────────────────── %>
+        <div class="fixed top-6 right-8 z-30 flex items-center gap-5">
+          <button type="button" id="ambientBtn"
+            class="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
+            <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round">
+              <path d="M4 14v4M9 8v10M14 11v7M19 5v13"></path>
+            </svg>
+            <span class="whitespace-nowrap font-mono text-[10px]">AMBIENT SOUND</span>
+          </button>
+
+          <button type="button" id="themeToggle" aria-label="Dark mode"
+            class="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
+            <svg class="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round">
+              <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"></path>
+            </svg>
+          </button>
+
+          <div class="flex items-center p-0.5 rounded-full bg-black/90 dark:bg-white/90 text-white dark:text-black">
+            <button type="button" data-take="edited"
+              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] font-semibold uppercase bg-black text-white dark:bg-white dark:text-black transition-colors">EDITED</button>
+            <button type="button" data-take="raw"
+              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] font-semibold uppercase text-neutral-400 dark:text-neutral-500 hover:text-white dark:hover:text-black transition-colors">RAW</button>
+          </div>
+
+          <button type="button" id="detailToggle" aria-label="Toggle details"
+            class="w-8 h-8 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
+            <svg id="detailPlus" class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round">
+              <path d="M12 5v14M5 12h14"></path>
+            </svg>
+            <svg id="detailClose" class="w-[14px] h-[14px] hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12"></path>
+            </svg>
+          </button>
         </div>
-      </div>
 
-    </aside>
+        <%# ── Main stage — photo fills center, right padding adjusts when drawer opens ── %>
+          <main id="stage"
+            class="h-screen flex flex-col items-center justify-center py-4 pl-[120px] pr-[120px] transition-all duration-500 ease-out">
+            <div class="flex-1 flex items-center justify-center w-full">
+              <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>"
+                class="fade-up max-h-[82vh] w-auto max-w-full object-contain block">
+            </div>
+            <a href="/"
+              class="shrink-0 py-3 text-[18px] font-black tracking-[0.04em] uppercase flex items-center justify-center gap-2 hover:opacity-60 transition-opacity">&larr;&nbsp;
+              BACK</a>
+          </main>
 
-    <%# ── Top-right controls ─────────────────────────────────────────── %>
-    <div class="fixed top-6 right-8 z-30 flex items-center gap-5">
-      <button type="button" id="ambientBtn" class="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
-        <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 14v4M9 8v10M14 11v7M19 5v13"></path></svg>
-        <span class="whitespace-nowrap font-mono text-[10px]">AMBIENT SOUND</span>
-      </button>
+          <%# ── Details side-panel (Hidden by default until '+' clicked) ───────────────────────── %>
+            <% var d=details; %>
+              <aside id="detailsPanel"
+                class="fixed right-0 top-0 bottom-0 z-20 w-[360px] bg-white dark:bg-[#121212] border-l border-neutral-100 dark:border-neutral-800 overflow-y-auto no-bar pt-24 px-8 pb-12 text-neutral-800 dark:text-neutral-200 transition-transform duration-300 ease-in-out translate-x-full">
+                <div>
+                  <p data-field="kicker" class="text-[10px] font-semibold tracking-[0.18em] uppercase text-neutral-400">
+                    <%= d.kicker || 'LANDSCAPE' %>
+                  </p>
+                  <h2 data-field="title"
+                    class="mt-2 font-serif italic text-[32px] leading-tight text-neutral-900 dark:text-white">
+                    <%= d.title %>
+                  </h2>
+                  <p data-field="ref" class="mt-1 font-mono text-[11px] tracking-[0.08em] text-neutral-400">
+                    <%= d.ref %>
+                  </p>
 
-      <button type="button" id="themeToggle" aria-label="Dark mode" class="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
-        <svg class="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"></path></svg>
-      </button>
+                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <p
+                    class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
+                    <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> ABOUT THE PHOTO
+                  </p>
+                  <p data-field="about"
+                    class="mt-2.5 text-[13px] leading-[1.6] font-normal text-neutral-700 dark:text-neutral-300">
+                    <%= d.about %>
+                  </p>
+                  <p class="mt-4 text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400">ALTERNATE NOTE</p>
+                  <p data-field="altNote"
+                    class="mt-1.5 text-[13px] leading-[1.6] text-neutral-500 dark:text-neutral-400">
+                    <%= d.altNote %>
+                  </p>
 
-      <div class="flex items-center p-0.5 rounded-full bg-black/90 dark:bg-white/90 text-white dark:text-black">
-        <button type="button" data-take="edited" class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] font-semibold uppercase bg-black text-white dark:bg-white dark:text-black transition-colors">EDITED</button>
-        <button type="button" data-take="raw" class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] font-semibold uppercase text-neutral-400 dark:text-neutral-500 hover:text-white dark:hover:text-black transition-colors">RAW</button>
-      </div>
+                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <p
+                    class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
+                    <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> ABOUT THE COLLECTION
+                  </p>
+                  <p data-field="collection"
+                    class="mt-2.5 text-[13px] leading-[1.6] text-neutral-700 dark:text-neutral-300">
+                    <%= d.collection %>
+                  </p>
+                  <a href="<%= d.collectionHref %>"
+                    class="mt-3 inline-block font-mono text-[10px] font-bold tracking-[0.12em] uppercase text-amber-600 dark:text-amber-400 hover:underline">VIEW
+                    FULL COLLECTION &rarr;</a>
 
-      <a href="/" id="detailCloseBtn" aria-label="Close" class="w-8 h-8 rounded-full bg-black text-white dark:bg-white dark:text-black flex items-center justify-center hover:opacity-80 transition-opacity">
-        <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"></path></svg>
-      </a>
-    </div>
+                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <p
+                    class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
+                    <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> CAMERA
+                  </p>
+                  <p data-field="camera" class="mt-2 text-[13px] font-medium text-neutral-800 dark:text-neutral-200">
+                    <%= d.camera %> / <span class="text-amber-600 dark:text-amber-400">
+                        <%= d.lens %>
+                      </span>
+                  </p>
 
-    <%# ── Main stage — photo fills the center space like in the reference ── %>
-    <main id="stage" class="h-screen flex flex-col items-center justify-center py-4 pl-[120px] pr-[380px] transition-transform duration-500 ease-out">
-      <div class="flex-1 flex items-center justify-center w-full">
-        <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>"
-             class="fade-up max-h-[82vh] w-auto max-w-full object-contain block">
-      </div>
-      <a href="/" class="shrink-0 py-3 text-[18px] font-black tracking-[0.04em] uppercase flex items-center justify-center gap-2 hover:opacity-60 transition-opacity">&larr;&nbsp; BACK</a>
-    </main>
+                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <p
+                    class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
+                    <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> FIELD DATA
+                  </p>
+                  <div class="mt-3 grid grid-cols-2 gap-y-4 gap-x-4">
+                    <div>
+                      <p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">DATE</p>
+                      <p data-field="date" class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200">
+                        <%= d.date %>
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">LOCATION</p>
+                      <p data-field="location"
+                        class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200">
+                        <%= d.location %>
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">CATEGORY</p>
+                      <p data-field="category"
+                        class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200">
+                        <%= d.category %>
+                      </p>
+                    </div>
+                    <div>
+                      <p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">SETTINGS</p>
+                      <p data-field="settings"
+                        class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200">
+                        <%= d.settings %>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </aside>
 
-    <%# ── Details side-panel (Always visible on right) ───────────────────────── %>
-    <% var d = details; %>
-    <aside id="detailsPanel" class="fixed right-0 top-0 bottom-0 z-20 w-[360px] bg-white dark:bg-[#121212] border-l border-neutral-100 dark:border-neutral-800 overflow-y-auto no-bar pt-24 px-8 pb-12 text-neutral-800 dark:text-neutral-200">
-      <div>
-        <p class="text-[10px] font-semibold tracking-[0.18em] uppercase text-neutral-400"><%= d.kicker || 'LANDSCAPE' %></p>
-        <h2 class="mt-2 font-serif italic text-[32px] leading-tight text-neutral-900 dark:text-white"><%= d.title %></h2>
-        <p class="mt-1 font-mono text-[11px] tracking-[0.08em] text-neutral-400"><%= d.ref %></p>
+              <script src="/js/app.js"></script>
+              </body>
 
-        <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
-        <p class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
-          <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> ABOUT THE PHOTO
-        </p>
-        <p class="mt-2.5 text-[13px] leading-[1.6] font-normal text-neutral-700 dark:text-neutral-300"><%= d.about %></p>
-        <p class="mt-4 text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400">ALTERNATE NOTE</p>
-        <p class="mt-1.5 text-[13px] leading-[1.6] text-neutral-500 dark:text-neutral-400"><%= d.altNote %></p>
-
-        <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
-        <p class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
-          <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> ABOUT THE COLLECTION
-        </p>
-        <p class="mt-2.5 text-[13px] leading-[1.6] text-neutral-700 dark:text-neutral-300"><%= d.collection %></p>
-        <a href="<%= d.collectionHref %>" class="mt-3 inline-block font-mono text-[10px] font-bold tracking-[0.12em] uppercase text-amber-600 dark:text-amber-400 hover:underline">VIEW FULL COLLECTION &rarr;</a>
-
-        <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
-        <p class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
-          <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> CAMERA
-        </p>
-        <p class="mt-2 text-[13px] font-medium text-neutral-800 dark:text-neutral-200"><%= d.camera %> / <span class="text-amber-600 dark:text-amber-400"><%= d.lens %></span></p>
-
-        <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
-        <p class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
-          <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> FIELD DATA
-        </p>
-        <div class="mt-3 grid grid-cols-2 gap-y-4 gap-x-4">
-          <div><p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">DATE</p><p class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200"><%= d.date %></p></div>
-          <div><p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">LOCATION</p><p class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200"><%= d.location %></p></div>
-          <div><p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">CATEGORY</p><p class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200"><%= d.category %></p></div>
-          <div><p class="text-[10px] font-bold tracking-[0.12em] uppercase text-neutral-400">SETTINGS</p><p class="mt-1 text-[12px] font-medium text-neutral-800 dark:text-neutral-200"><%= d.settings %></p></div>
-        </div>
-      </div>
-    </aside>
-
-  <script src="/js/app.js"></script>
-</body>
-</html>
+              </html>

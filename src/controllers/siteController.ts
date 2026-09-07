@@ -244,8 +244,31 @@ const getPhotoDetail = async (req: Request, res: Response) => {
     const collectionMap: Record<string, string> = {};
     collRows.forEach(c => { collectionMap[c.name] = c.description || ""; });
 
+    const buildDetails = (r: DBPhotoRow) => {
+      const m = parseMeta(r.metadata);
+      const gM = (k: string) => m[k] || m[k.toLowerCase()] || "";
+      return {
+        kicker: r.category || "Photography",
+        title: r.cap || r.title || "",
+        ref: r.ref || "",
+        about: r.description || "",
+        altNote: r.alt_note || "",
+        collection: collectionMap[r.collection || ""] || r.collection || "",
+        collectionHref: "#",
+        camera: r.camera || gM("Camera"),
+        lens: gM("Lens"),
+        date: r.date || "",
+        location: gM("Location"),
+        category: r.category || "",
+        settings: gM("Settings"),
+      };
+    };
+
     const photo = mapToSitePhoto(rows[0], collectionMap);
-    const photos = allPhotoRows.map(r => mapToSitePhoto(r, collectionMap));
+    const photos = allPhotoRows.map(r => ({
+      ...mapToSitePhoto(r, collectionMap),
+      details: buildDetails(r)
+    }));
     const photoCameras = allPhotoRows.map(r => r.camera || "");
     const cameras = buildCameraMenu(camRows, photoCameras);
 
