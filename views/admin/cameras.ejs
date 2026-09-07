@@ -42,9 +42,9 @@
         <table class="w-full table-fixed border-collapse text-[13px]" data-table="cameras">
           <thead>
             <tr class="bg-sand">
-              <th class="th w-[35%]">Brand</th>
-              <th class="th">Model</th>
-              <th class="th w-[12%]">Photos</th>
+              <th class="th w-[35%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="brand">Brand <span class="text-amber"></span></button></th>
+              <th class="th"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="model">Model <span class="text-amber"></span></button></th>
+              <th class="th w-[12%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="photos">Photos <span class="text-amber"></span></button></th>
               <th class="th w-[140px] text-right">Actions</th>
             </tr>
           </thead>
@@ -55,12 +55,14 @@
               </tr>
             <% } %>
             <% cameras.forEach(function (c, i) { %>
+              <% const count = photos.filter(p => Number(p.camera_id) === Number(c.id) || p.camera === (c.brand + ' ' + c.model) || p.camera === c.model).length; %>
               <tr class="border-b border-[#f3ede4]"
                   data-brand="<%= c.brand %>"
-                  data-model="<%= c.model %>">
+                  data-model="<%= c.model %>"
+                  data-photos="<%= count %>">
                 <td class="td truncate font-semibold text-pine"><%= c.brand %></td>
                 <td class="td truncate font-medium"><%= c.model %></td>
-                <td class="td text-xs text-mute"><%= photos.filter(p => p.camera === (c.brand + ' ' + c.model) || p.camera === c.model).length %></td>
+                <td class="td text-xs text-mute"><%= count %></td>
                 <td class="td">
                   <div class="flex justify-end gap-1.5">
                     <button type="button"

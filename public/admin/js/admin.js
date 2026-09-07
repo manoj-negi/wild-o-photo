@@ -45,8 +45,15 @@
     const dir = sortDir === "asc" ? 1 : -1;
     Array.from(body.rows)
       .sort((a, b) => {
-        const av = (a.dataset[sortKey] || "").toLowerCase();
-        const bv = (b.dataset[sortKey] || "").toLowerCase();
+        const rawA = a.dataset[sortKey] || "";
+        const rawB = b.dataset[sortKey] || "";
+        const numA = Number(rawA);
+        const numB = Number(rawB);
+        if (!isNaN(numA) && !isNaN(numB) && rawA.trim() !== "" && rawB.trim() !== "") {
+          return numA < numB ? -dir : numA > numB ? dir : 0;
+        }
+        const av = rawA.toLowerCase();
+        const bv = rawB.toLowerCase();
         return av < bv ? -dir : av > bv ? dir : 0;
       })
       .forEach(tr => body.appendChild(tr));

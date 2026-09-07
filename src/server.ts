@@ -48,8 +48,6 @@ app.use(
     })
 );
 
-app.locals.storage = "1.8 GB";
-
 app.use("/", siteRouter);
 app.use("/admin", adminRouter);
 

@@ -42,9 +42,9 @@
         <table class="w-full table-fixed border-collapse text-[13px]" data-table="categories">
           <thead>
             <tr class="bg-sand">
-              <th class="th">Title</th>
-              <th class="th w-[26%]">Parent</th>
-              <th class="th w-[15%]">Photos</th>
+              <th class="th"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="title">Title <span class="text-amber"></span></button></th>
+              <th class="th w-[26%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="parent">Parent <span class="text-amber"></span></button></th>
+              <th class="th w-[15%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="photos">Photos <span class="text-amber"></span></button></th>
               <th class="th w-[140px] text-right">Actions</th>
             </tr>
           </thead>
@@ -55,11 +55,14 @@
               </tr>
             <% } %>
             <% categories.forEach(function (c, i) { %>
+              <% const count = photos.filter(p => Number(p.category_id) === Number(c.id) || p.category === c.title).length; %>
               <tr class="border-b border-[#f3ede4]"
-                  data-title="<%= c.title %>" data-parent="<%= c.parent %>">
+                  data-title="<%= c.title %>"
+                  data-parent="<%= c.parent %>"
+                  data-photos="<%= count %>">
                 <td class="td truncate font-medium"><%= c.title %></td>
                 <td class="td truncate text-xs text-mute"><%= c.parent %></td>
-                <td class="td text-xs text-mute"><%= photos.filter(p => p.category === c.title).length %></td>
+                <td class="td text-xs text-mute"><%= count %></td>
                 <td class="td">
                   <div class="flex justify-end gap-1.5">
                     <button type="button"

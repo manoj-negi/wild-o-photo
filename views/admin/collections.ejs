@@ -42,9 +42,9 @@
         <table class="w-full table-fixed border-collapse text-[13px]" data-table="collections">
           <thead>
             <tr class="bg-sand">
-              <th class="th w-[30%]">Title</th>
-              <th class="th">Description</th>
-              <th class="th w-[12%]">Photos</th>
+              <th class="th w-[30%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="title">Title <span class="text-amber"></span></button></th>
+              <th class="th"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="description">Description <span class="text-amber"></span></button></th>
+              <th class="th w-[12%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="photos">Photos <span class="text-amber"></span></button></th>
               <th class="th w-[140px] text-right">Actions</th>
             </tr>
           </thead>
@@ -55,11 +55,14 @@
               </tr>
             <% } %>
             <% collections.forEach(function (c, i) { %>
+              <% const count = photos.filter(p => Number(p.collection_id) === Number(c.id) || p.collection === (c.title || c.name)).length; %>
               <tr class="border-b border-[#f3ede4]"
-                  data-title="<%= c.title || c.name %>">
+                  data-title="<%= c.title || c.name %>"
+                  data-description="<%= c.description || '' %>"
+                  data-photos="<%= count %>">
                 <td class="td truncate font-medium"><%= c.title || c.name %></td>
                 <td class="td truncate text-xs text-mute"><%= c.description || "-" %></td>
-                <td class="td text-xs text-mute"><%= photos.filter(p => p.collection === (c.title || c.name)).length %></td>
+                <td class="td text-xs text-mute"><%= count %></td>
                 <td class="td">
                   <div class="flex justify-end gap-1.5">
                     <button type="button"
