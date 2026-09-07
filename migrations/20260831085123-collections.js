@@ -15,19 +15,27 @@ exports.setup = function (options, seedLink) {
 };
 
 exports.up = function (db) {
-  return db.runSql(`
+  return db
+    .runSql(
+      `
     CREATE TABLE collections (
       id INT PRIMARY KEY AUTO_INCREMENT,
-
       name VARCHAR(255) NOT NULL,
       description TEXT,
-
       cover_photo_id INT,
-
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
-  `);
+  `,
+    )
+    .then(function () {
+      return db.runSql(`
+      INSERT INTO collections (name, description) VALUES
+        ('Spiti, 2022', 'High altitude desert expeditions in Trans-Himalaya.'),
+        ('Ladakh High Pass', 'Mountain passes, wildlife, and monasteries.'),
+        ('Western Ghats Monsoon', 'Rainforest flora, fauna and mist.')
+    `);
+    });
 };
 
 exports.down = function (db) {

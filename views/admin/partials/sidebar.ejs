@@ -1,40 +1,40 @@
-<%
-  const items = [
-    { key: "photos",      label: "Photos",      href: "/admin/photos",     count: photos.length },
-    { key: "add",         label: "Add photo",   href: "/admin/photos/new", count: "" },
-    { key: "categories",  label: "Categories",  href: "/admin/categories", count: categories.length },
-    { key: "collections", label: "Collections", href: "/admin/categories", count: "" },
-    { key: "settings",    label: "Settings",    href: "/admin/photos",     count: "" }
-  ];
-%>
+<% const items=[ { key: "photos" , label: "Photos" , href: "/admin/photos" , count: photos.length }, { key: "add" ,
+  label: "Add photo" , href: "/admin/photos/new" , count: "" }, { key: "categories" , label: "Categories" ,
+  href: "/admin/categories" , count: categories.length }, { key: "collections" , label: "Collections" ,
+  href: "/admin/collections" , count: (typeof collections !=="undefined" ? collections.length : "" ) }, { key: "cameras"
+  , label: "Cameras" , href: "/admin/cameras" , count: (typeof cameras !=="undefined" ? cameras.length : "" ) }, {
+  key: "lenses" , label: "Lenses" , href: "/admin/lenses" , count: (typeof lenses !=="undefined" ? lenses.length : "" )
+  }, ]; %>
 
-<nav class="flex flex-col gap-1 bg-pine2 p-5">
+  <nav class="flex flex-col gap-1 bg-pine2 p-5">
 
-  <% items.forEach(function (it) { const on = nav === it.key; %>
+    <% items.forEach(function (it) { const on=nav===it.key; %>
 
-    <a href="<%= it.href %>"
-       class="flex w-full items-center justify-between gap-2 rounded-2xl px-3.5 py-2.5 text-[13px] <%= on ? 'bg-amber font-semibold text-pine' : 'text-cream/75 hover:bg-cream/5' %>">
-      <span><%= it.label %></span>
-      <span class="text-[11px] opacity-70"><%= it.count %></span>
-    </a>
+      <a href="<%= it.href %>"
+        class="flex w-full items-center justify-between gap-2 rounded-2xl px-3.5 py-2.5 text-[13px] <%= on ? 'bg-amber font-semibold text-pine' : 'text-cream/75 hover:bg-cream/5' %>">
+        <span>
+          <%= it.label %>
+        </span>
+        <span class="text-[11px] opacity-70">
+          <%= it.count %>
+        </span>
+      </a>
 
-  <% }); %>
-
-
-  <!-- Logout -->
-  <form action="/admin/logout" method="POST" class="mt-5">
-    <button
-      type="submit"
-      class="w-full rounded-2xl border border-amber px-3.5 py-2.5 text-left text-[13px] font-semibold text-amber transition hover:bg-amber hover:text-pine"
-    >
-      Logout
-    </button>
-  </form>
+      <% }); %>
 
 
-  <!-- Storage -->
-  <div class="mt-auto rounded-2xl bg-amber/15 px-3 py-3.5 text-xs leading-relaxed text-cream/70">
-    <%= storage %> of 5 GB used
-  </div>
+        <!-- Logout -->
+        <form action="/admin/logout" method="POST" class="mt-5">
+          <button type="submit"
+            class="w-full rounded-2xl border border-amber px-3.5 py-2.5 text-left text-[13px] font-semibold text-amber transition hover:bg-amber hover:text-pine">
+            Logout
+          </button>
+        </form>
 
-</nav>
+
+        <!-- Storage -->
+        <div class="mt-auto rounded-2xl bg-amber/15 px-3 py-3.5 text-xs leading-relaxed text-cream/70">
+          <%= storage %> of 5 GB used
+        </div>
+
+  </nav>

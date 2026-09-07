@@ -18,10 +18,8 @@ exports.up = function (db) {
   return db.runSql(`
     CREATE TABLE permissions (
       id INT PRIMARY KEY AUTO_INCREMENT,
-
       name VARCHAR(255) UNIQUE NOT NULL,
       description TEXT,
-
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )

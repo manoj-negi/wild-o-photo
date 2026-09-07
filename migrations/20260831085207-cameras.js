@@ -15,19 +15,27 @@ exports.setup = function (options, seedLink) {
 };
 
 exports.up = function (db) {
-  return db.runSql(`
-    CREATE TABLE cameras (
-      id INT PRIMARY KEY AUTO_INCREMENT,
-
-      brand VARCHAR(255) NOT NULL,
-      model VARCHAR(255) NOT NULL,
-
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-
-      UNIQUE (brand, model)
-    )
-  `);
+  return db
+    .runSql(`
+      CREATE TABLE cameras (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        brand VARCHAR(255) NOT NULL,
+        model VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE (brand, model)
+      )
+    `)
+    .then(function () {
+      return db.runSql(`
+        INSERT INTO cameras (brand, model) VALUES
+          ('Sony', 'Sony α1'),
+          ('Sony', 'Sony a7 IV'),
+          ('Canon', 'Canon EOS R6'),
+          ('Nikon', 'Nikon Z8'),
+          ('Fujifilm', 'Fujifilm X-T5')
+      `);
+    });
 };
 
 exports.down = function (db) {

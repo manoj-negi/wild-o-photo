@@ -1,4 +1,4 @@
-// Studio Admin — vanilla JS: table sort, header search, dynamic metadata fields,
+// OF Wild & Walls Admin — vanilla JS: table sort, header search, dynamic metadata fields,
 // modal, pill toggles, delete confirmation.
 (function () {
   "use strict";

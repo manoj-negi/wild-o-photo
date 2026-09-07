@@ -19,17 +19,13 @@ exports.up = function (db) {
     CREATE TABLE role_permissions (
       role_id INT NOT NULL,
       permission_id INT NOT NULL,
-
       PRIMARY KEY (role_id, permission_id),
-
       CONSTRAINT fk_role_permissions_role
         FOREIGN KEY (role_id)
         REFERENCES roles(id),
-
       CONSTRAINT fk_role_permissions_permission
         FOREIGN KEY (permission_id)
         REFERENCES permissions(id),
-
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
