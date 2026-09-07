@@ -1,9 +1,9 @@
 <%# views/grid.ejs — grid view. expects: title, photos[] { src, alt }, cameras[] %>
 <%- include('partials/head', { title: title }) %>
 <%- include('partials/header', { view: 'grid' }) %>
-  <main class="h-screen flex items-center overflow-hidden pt-[74px] pb-[340px]">
-    <div id="gridStrip" class="w-full overflow-x-auto no-bar">
-      <div class="flex items-center gap-[14px] px-[1.5vw]">
+  <main class="h-screen flex items-center justify-center overflow-hidden py-12">
+    <div id="gridStrip" class="w-full overflow-x-auto no-bar flex justify-center">
+      <div class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max">
         <% photos.forEach(function (p) { %>
           <a href="/photo/<%= p.slug %>" class="photo-item group relative shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)]"
              data-category="<%= p.category %>"

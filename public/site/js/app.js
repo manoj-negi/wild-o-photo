@@ -310,14 +310,7 @@
 
     /* ── Mark active thumb ───────────────────────────────────────────── */
     function markActive(th) {
-      thumbs.forEach(function (el) {
-        var isActive = (el === th);
-        el.classList.toggle('ring-2', isActive);
-        el.classList.toggle('ring-amber-500', isActive);
-        el.classList.toggle('scale-[1.1]', isActive);
-        el.classList.toggle('z-10', isActive);
-        el.classList.toggle('opacity-70', !isActive);
-      });
+      // Intentionally empty: hover/active highlights removed per design preference
     }
 
     /* ── Select thumb: update main photo & right side panel ─────────── */
