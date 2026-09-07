@@ -1,11 +1,43 @@
 <%# views/index.ejs — flow view. expects: title, photos[] { src, alt, l, t, w, h } (vw units), cameras[] %>
 <%- include('partials/head', { title: title }) %>
 <%- include('partials/header', { view: 'flow' }) %>
+<%
+  // Auto-layout grid for photos that don't have l/t/w/h set yet.
+  // Positions them in a 3-column scattered layout so they're always visible.
+  var autoPositions = [
+    { l: 2,    t: 2,    w: 22, h: 29 },
+    { l: 26.5, t: 1.4,  w: 10, h: 7  },
+    { l: 38.5, t: 2,    w: 22, h: 16 },
+    { l: 63.5, t: 1.5,  w: 10, h: 13 },
+    { l: 76,   t: 2,    w: 22, h: 21 },
+    { l: 2,    t: 34,   w: 22, h: 16 },
+    { l: 26.5, t: 10.5, w: 10, h: 20 },
+    { l: 38.5, t: 20,   w: 22, h: 21 },
+    { l: 63.5, t: 17,   w: 10, h: 14 },
+    { l: 76,   t: 25,   w: 22, h: 21 },
+  ];
+  var autoIdx = 0;
+  // Calculate canvas height based on positioned photos
+  var maxBottom = 73.2;
+  photos.forEach(function(p) {
+    var t = parseFloat(p.t) || 0;
+    var h = parseFloat(p.h) || 0;
+    if (t + h > maxBottom) maxBottom = t + h + 4;
+  });
+%>
   <main class="pt-[74px]">
-    <div id="flowCanvas" class="relative w-full" style="height:73.2vw">
-      <% photos.forEach(function (p) { %>
-        <a href="/photo/<%= p.slug %>" class="group absolute block"
-           style="left:<%= p.l %>vw; top:<%= p.t %>vw; width:<%= p.w %>vw; height:<%= p.h %>vw">
+    <div id="flowCanvas" class="relative w-full" style="height:<%= maxBottom %>vw">
+      <% photos.forEach(function (p, i) {
+        // If this photo has no flow position, use an auto-layout slot
+        var hasPos = p.w > 0 && p.h > 0;
+        var pos = hasPos ? p : autoPositions[autoIdx++ % autoPositions.length];
+      %>
+        <a href="/photo/<%= p.slug %>" class="photo-item group absolute block"
+           data-category="<%= p.category %>"
+           data-collection="<%= p.collection %>"
+           data-camera="<%= p.camera %>"
+           data-lens="<%= p.lens %>"
+           style="left:<%= pos.l %>vw; top:<%= pos.t %>vw; width:<%= pos.w %>vw; height:<%= pos.h %>vw">
           <span class="block w-full h-full overflow-hidden">
             <img src="<%= p.src %>" alt="<%= p.alt %>" loading="lazy" class="w-full h-full object-cover select-none">
           </span>

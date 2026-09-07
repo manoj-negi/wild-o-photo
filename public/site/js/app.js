@@ -1,4 +1,4 @@
-/* public/js/app.js — dark mode, camera menu, bottom bar, horizontal strip scroll */
+/* public/js/app.js — dark mode, API-driven filter menus, photo filtering, horizontal strip scroll */
 (function () {
   var root = document.documentElement;
   var KEY = 'oww:theme';
@@ -11,82 +11,379 @@
     localStorage.setItem(KEY, root.classList.contains('dark') ? 'dark' : 'light');
   });
 
-  /* bottom bar — single active pill */
+  /* ── HTML helpers ────────────────────────────────────────────────── */
+
+  function esc(str) {
+    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+  function escAttr(str) {
+    return String(str || '').replace(/"/g, '&quot;');
+  }
+
+  function itemRow(name, count) {
+    return (
+      '<button type="button" data-name="' + escAttr(name) + '"' +
+      ' class="oww-filter-item w-full flex items-center justify-between px-4 py-1.5 text-[15px] text-left' +
+      ' hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors">' +
+      '<span>' + esc(name) + '</span>' +
+      '<span class="text-ink/35 dark:text-white/35">[' + (count || 0) + ']</span>' +
+      '</button>'
+    );
+  }
+
+  function brandHeader(label) {
+    return (
+      '<p class="px-4 pt-2 pb-1 text-[11px] tracking-[0.06em] uppercase text-ink/40 dark:text-white/40">' +
+      esc(label) + '</p>'
+    );
+  }
+
+  function emptyMsg(text) {
+    return '<p class="px-4 py-2 text-[13px] text-ink/35 dark:text-white/35 italic">' + esc(text) + '</p>';
+  }
+
+  function buildGroupedHTML(groups) {
+    if (!groups || groups.length === 0) return emptyMsg('None found');
+    return groups.map(function (g) {
+      var rows = (g.models || []).map(function (m) { return itemRow(m.name, m.count); }).join('');
+      return brandHeader(g.brand) + rows;
+    }).join('');
+  }
+
+  function buildFlatHTML(items, groupByParent) {
+    if (!items || items.length === 0) return emptyMsg('None found');
+    if (groupByParent) {
+      var parentMap = {};
+      var topLevel = [];
+      items.forEach(function (item) {
+        var p = (item.parent || '').trim();
+        if (!p || p === 'None') { topLevel.push(item); }
+        else {
+          if (!parentMap[p]) parentMap[p] = [];
+          parentMap[p].push(item);
+        }
+      });
+      var html = '';
+      topLevel.forEach(function (item) {
+        var children = parentMap[item.title] || [];
+        if (children.length > 0) {
+          html += brandHeader(item.title);
+          children.forEach(function (c) { html += itemRow(c.title, c.count); });
+        } else {
+          html += itemRow(item.title, item.count);
+        }
+      });
+      Object.keys(parentMap).forEach(function (p) {
+        var exists = topLevel.some(function (t) { return t.title === p; });
+        if (!exists) {
+          html += brandHeader(p);
+          parentMap[p].forEach(function (c) { html += itemRow(c.title, c.count); });
+        }
+      });
+      return html || emptyMsg('None found');
+    }
+    return items.map(function (item) { return itemRow(item.title, item.count); }).join('');
+  }
+
+  /* ── Photo filtering ─────────────────────────────────────────────── */
+
+  // activeFilters: { category, collection, camera, lens } — null means no filter
+  var activeFilters = { category: null, collection: null, camera: null, lens: null };
+
+  /** Map filter type name → the data-attribute key on .photo-item elements */
+  var dataAttrMap = {
+    category:   'category',
+    collection: 'collection',
+    camera:     'camera',
+    lens:       'lens'
+  };
+
+  /** Map filter type → which button label to update */
+  var defaultLabels = {
+    category:   'Category',
+    collection: 'Collections',
+    camera:     'Camera',
+    lens:       'Lens'
+  };
+
+  function applyFilters() {
+    var photos = document.querySelectorAll('.photo-item');
+    photos.forEach(function (el) {
+      var visible = true;
+      Object.keys(activeFilters).forEach(function (type) {
+        var val = activeFilters[type];
+        if (!val) return; // no filter active for this type
+        var photoVal = (el.getAttribute('data-' + dataAttrMap[type]) || '').trim().toLowerCase();
+        if (photoVal !== val.toLowerCase()) visible = false;
+      });
+      // For flow (absolute positioned), toggle visibility + pointer events
+      // For grid (flex item), toggle display
+      if (el.style.position === 'absolute' || el.classList.contains('absolute')) {
+        el.style.opacity    = visible ? '' : '0';
+        el.style.pointerEvents = visible ? '' : 'none';
+        el.style.visibility = visible ? '' : 'hidden';
+      } else {
+        el.style.display = visible ? '' : 'none';
+      }
+    });
+  }
+
+  function setFilter(type, value) {
+    // Toggle off if clicking the same value again
+    if (activeFilters[type] === value) {
+      activeFilters[type] = null;
+    } else {
+      activeFilters[type] = value;
+    }
+    updateButtonLabel(type);
+    applyFilters();
+  }
+
+  function clearFilter(type) {
+    activeFilters[type] = null;
+    updateButtonLabel(type);
+    applyFilters();
+  }
+
+  function updateButtonLabel(type) {
+    var btnId = type === 'collection' ? 'collectionsBtn' : type + 'Btn';
+    var btn = document.getElementById(btnId);
+    if (!btn) return;
+    var labelEl = btn.querySelector('span');
+    if (!labelEl) return;
+    var active = activeFilters[type];
+    if (active) {
+      // Truncate long names for the pill
+      var short = active.length > 16 ? active.substring(0, 14) + '…' : active;
+      labelEl.textContent = short + ' ×';
+      btn.classList.add('text-[#c8a03c]');
+      btn.classList.remove('text-ink/75', 'dark:text-white/75');
+    } else {
+      labelEl.textContent = defaultLabels[type];
+      btn.classList.remove('text-[#c8a03c]');
+      btn.classList.add('text-ink/75', 'dark:text-white/75');
+    }
+  }
+
+  /* ── Generic popup wiring ─────────────────────────────────────────── */
+
+  function wirePopup(menuEl, triggerBtn, filterType) {
+    if (!menuEl || !triggerBtn) return;
+
+    // Clicking the trigger: if active filter, clear it; else open menu
+    triggerBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      // If filter is active, first click clears it without opening the menu
+      if (activeFilters[filterType]) {
+        clearFilter(filterType);
+        // close all menus
+        document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
+        return;
+      }
+      var isHidden = menuEl.classList.contains('hidden');
+      document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
+      menuEl.classList.toggle('hidden', !isHidden);
+    });
+
+    menuEl.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { menuEl.classList.add('hidden'); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
+      }
+    });
+  }
+
+  /* ── Wire filter item clicks inside a menu ────────────────────────── */
+
+  function wireFilterItems(menuEl, filterType) {
+    if (!menuEl) return;
+    // Use event delegation — items are added dynamically
+    menuEl.addEventListener('click', function (e) {
+      var btn = e.target.closest('.oww-filter-item');
+      if (!btn) return;
+      e.stopPropagation();
+      var name = btn.getAttribute('data-name') || '';
+      setFilter(filterType, name);
+      menuEl.classList.add('hidden');
+    });
+  }
+
+  /* ── Setup a menu: fetch → render → wire ─────────────────────────── */
+
+  function setupMenu(menuId, btnId, apiUrl, dataKey, renderFn, filterType) {
+    var menuEl = document.getElementById(menuId);
+    var btnEl  = document.getElementById(btnId);
+    if (!menuEl) return;
+    menuEl.classList.add('oww-dropdown');
+    wirePopup(menuEl, btnEl, filterType);
+    wireFilterItems(menuEl, filterType);
+
+    fetch(apiUrl)
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        menuEl.innerHTML = renderFn(data[dataKey]);
+      })
+      .catch(function () {
+        menuEl.innerHTML = '<p class="px-4 py-2 text-[13px] text-red-400 italic">Failed to load</p>';
+      });
+  }
+
+  // Category — grouped by parent hierarchy
+  setupMenu('categoryMenu', 'categoryBtn', '/api/categories', 'categories', function (items) {
+    return buildFlatHTML(items, true);
+  }, 'category');
+
+  // Collections — flat list
+  setupMenu('collectionsMenu', 'collectionsBtn', '/api/collections', 'collections', function (items) {
+    return buildFlatHTML(items, false);
+  }, 'collection');
+
+  // Camera — grouped by brand
+  setupMenu('cameraMenu', 'cameraBtn', '/api/cameras', 'cameras', buildGroupedHTML, 'camera');
+
+  // Lens — grouped by brand
+  setupMenu('lensMenu', 'lensBtn', '/api/lenses', 'lenses', buildGroupedHTML, 'lens');
+
+  /* ── Bottom bar pill highlight (legacy — kept for visual only) ────── */
   document.querySelectorAll('[data-filter]').forEach(function (b) {
     b.addEventListener('click', function () {
-      document.querySelectorAll('[data-filter]').forEach(function (o) {
-        var on = o === b;
-        o.classList.toggle('bg-black/[0.06]', on);
-        o.classList.toggle('dark:bg-white/[0.12]', on);
-        o.classList.toggle('font-medium', on);
-        o.classList.toggle('text-ink/75', !on);
-        o.classList.toggle('dark:text-white/75', !on);
-      });
+      // Only update non-active styling (filter logic is above)
+      // Do nothing extra here — wirePopup already handles it
     });
   });
 
-  /* camera menu */
-  var menu = document.getElementById('cameraMenu');
-  var camBtn = document.getElementById('cameraBtn');
-  if (menu && camBtn) {
-    camBtn.addEventListener('click', function (e) {
-      e.stopPropagation();
-      menu.classList.toggle('hidden');
-    });
-    menu.addEventListener('click', function (e) { e.stopPropagation(); });
-    document.addEventListener('click', function () { menu.classList.add('hidden'); });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') menu.classList.add('hidden');
-    });
-  }
+  /* ── Detail page — vertical thumbnail slider ──────────────────────── */
+  (function () {
+    var track    = document.getElementById('railTrack');
+    var viewport = document.getElementById('railViewport');
+    var prevBtn  = document.getElementById('railPrev');
+    var nextBtn  = document.getElementById('railNext');
+    var mainPhoto = document.getElementById('mainPhoto');
+    if (!track || !viewport) return;
 
-  /* detail page — rail selects the main image, no page reload */
-  var rail = document.getElementById('thumbRail');
-  var main = document.getElementById('mainPhoto');
-  if (rail && main) {
-    var items = Array.prototype.slice.call(rail.querySelectorAll('a'));
+    var thumbs = Array.prototype.slice.call(track.querySelectorAll('.rail-thumb'));
+    if (thumbs.length === 0) return;
 
-    function mark(active) {
-      items.forEach(function (a) {
-        var sp = a.querySelector('span');
-        if (sp) sp.style.transform = a === active ? 'translateX(1.4vw)' : '';
+    var currentIdx = 0;  // index of top-most visible thumb
+    var STEP = 1;        // advance one thumb at a time
+
+    /* Find which thumb matches the main photo already on screen */
+    var activeIdx = 0;
+    if (mainPhoto) {
+      thumbs.forEach(function (th, i) {
+        if (th.getAttribute('data-src') === mainPhoto.getAttribute('src')) activeIdx = i;
       });
     }
 
-    function centerThumb(a, smooth) {
-      var top = a.offsetTop - (rail.clientHeight - a.offsetHeight) / 2;
-      top = Math.max(0, Math.min(top, rail.scrollHeight - rail.clientHeight));
-      if (rail.scrollTo) rail.scrollTo({ top: top, behavior: smooth ? 'smooth' : 'auto' });
-      else rail.scrollTop = top;
+    /* ── Measure a single thumb height (incl. gap) ───────────────────── */
+    function thumbUnitHeight() {
+      if (thumbs.length < 2) return thumbs[0].offsetHeight + 8;
+      var rect0 = thumbs[0].getBoundingClientRect();
+      var rect1 = thumbs[1].getBoundingClientRect();
+      return rect1.top - rect0.top;           // includes gap
     }
 
-    function select(a) {
-      var img = a.querySelector('img');
-      if (!img) return;
-      main.src = img.getAttribute('src');
-      main.alt = img.getAttribute('alt') || '';
-      main.style.animationDelay = '0s';
-      main.classList.remove('fade-up');
-      void main.offsetWidth;            /* restart the fade */
-      main.classList.add('fade-up');
-      mark(a);
-      centerThumb(a, true);
-      var href = a.getAttribute('href');
+    /* ── How many thumbs fit in the viewport? ────────────────────────── */
+    function visibleCount() {
+      var unit = thumbUnitHeight();
+      return unit > 0 ? Math.max(1, Math.floor(viewport.clientHeight / unit)) : 4;
+    }
+
+    /* ── Slide the track to show startIdx at top ─────────────────────── */
+    function slideTo(idx, animate) {
+      var total = thumbs.length;
+      var vis   = visibleCount();
+      idx = Math.max(0, Math.min(idx, total - vis));
+      currentIdx = idx;
+
+      var unit   = thumbUnitHeight();
+      var offset = idx * unit;
+      track.style.transition = animate === false
+        ? 'none'
+        : 'transform 0.5s cubic-bezier(.2,.7,.2,1)';
+      track.style.transform = 'translateY(-' + offset + 'px)';
+
+      // Dim arrows at boundaries
+      if (prevBtn) prevBtn.style.opacity = idx <= 0 ? '0.2' : '1';
+      if (nextBtn) nextBtn.style.opacity = idx >= total - vis ? '0.2' : '1';
+    }
+
+    /* ── Mark active thumb ───────────────────────────────────────────── */
+    function markActive(th) {
+      thumbs.forEach(function (el) {
+        var sp = el.querySelector('span');
+        if (sp) sp.style.transform = el === th ? 'translateX(1.4vw)' : '';
+      });
+    }
+
+    /* ── Select thumb: update main photo ─────────────────────────────── */
+    function selectThumb(th) {
+      if (!mainPhoto) return;
+      var src = th.getAttribute('data-src');
+      var alt = th.getAttribute('data-alt');
+      var href = th.getAttribute('data-href');
+      mainPhoto.src = src;
+      mainPhoto.alt = alt || '';
+      mainPhoto.style.animationDelay = '0s';
+      mainPhoto.classList.remove('fade-up');
+      void mainPhoto.offsetWidth;
+      mainPhoto.classList.add('fade-up');
+      markActive(th);
       if (href && window.history.replaceState) window.history.replaceState(null, '', href);
     }
 
-    items.forEach(function (a) {
-      a.addEventListener('click', function (e) { e.preventDefault(); select(a); });
+    /* ── Init: position so active thumb is visible ───────────────────── */
+    function init() {
+      var vis = visibleCount();
+      // Center active thumb in the viewport
+      var startIdx = Math.max(0, Math.min(activeIdx - Math.floor(vis / 2), thumbs.length - vis));
+      slideTo(startIdx, false);
+      markActive(thumbs[activeIdx]);
+    }
+
+    /* Wait one frame so layout is ready */
+    requestAnimationFrame(function () { setTimeout(init, 60); });
+
+    /* ── Arrow buttons ───────────────────────────────────────────────── */
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function () { slideTo(currentIdx - STEP, true); });
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function () { slideTo(currentIdx + STEP, true); });
+    }
+
+    /* ── Mouse-wheel on the rail ─────────────────────────────────────── */
+    var rail = document.getElementById('thumbRail');
+    if (rail) {
+      rail.addEventListener('wheel', function (e) {
+        e.preventDefault();
+        if (e.deltaY > 0) slideTo(currentIdx + STEP, true);
+        else               slideTo(currentIdx - STEP, true);
+      }, { passive: false });
+    }
+
+    /* ── Keyboard: arrow keys while hovering rail ────────────────────── */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowUp')   slideTo(currentIdx - STEP, true);
+      if (e.key === 'ArrowDown') slideTo(currentIdx + STEP, true);
     });
 
-    /* whichever thumb matches the photo already on screen starts out selected */
-    items.forEach(function (a) {
-      var img = a.querySelector('img');
-      if (img && img.src === main.src) { mark(a); centerThumb(a, false); }
+    /* ── Click a thumb ───────────────────────────────────────────────── */
+    thumbs.forEach(function (th, i) {
+      th.addEventListener('click', function (e) {
+        e.preventDefault();
+        activeIdx = i;
+        selectThumb(th);
+        // Scroll slider to keep clicked thumb in view
+        var vis = visibleCount();
+        if (i < currentIdx) slideTo(i, true);
+        else if (i >= currentIdx + vis) slideTo(i - vis + 1, true);
+      });
     });
-  }
+  })();
 
-  /* detail page — details panel */
+  /* ── Detail page — details panel ─────────────────────────────────── */
   var panel = document.getElementById('detailsPanel');
   var pBtn  = document.getElementById('detailToggle');
   var stage = document.getElementById('stage');
@@ -95,7 +392,7 @@
     var closeIcon = document.getElementById('detailClose');
     pBtn.addEventListener('click', function () {
       var open = panel.classList.toggle('translate-x-full');
-      open = !open;                                  /* class present = closed */
+      open = !open;
       if (plusIcon)  plusIcon.classList.toggle('hidden', open);
       if (closeIcon) closeIcon.classList.toggle('hidden', !open);
       pBtn.classList.toggle('bg-ink', open);
@@ -103,8 +400,6 @@
       pBtn.classList.toggle('bg-paper', !open);
       if (stage) {
         if (!open) { stage.style.transform = ''; return; }
-        /* the design nudges the stage left by 5.4vw; on narrow windows nudge
-           further so the panel never covers the photo */
         var img = document.getElementById('mainPhoto');
         var shift = window.innerWidth * 0.054;
         if (img) {
@@ -119,7 +414,7 @@
     });
   }
 
-  /* detail page — EDITED / RAW */
+  /* ── Detail page — EDITED / RAW ──────────────────────────────────── */
   document.querySelectorAll('[data-take]').forEach(function (b) {
     b.addEventListener('click', function () {
       document.querySelectorAll('[data-take]').forEach(function (o) {
@@ -135,14 +430,14 @@
     });
   });
 
-  /* detail page — ambient sound */
+  /* ── Detail page — ambient sound ─────────────────────────────────── */
   var amb = document.getElementById('ambientBtn');
   if (amb) amb.addEventListener('click', function () {
     amb.classList.toggle('text-ink/55');
     amb.classList.toggle('dark:text-white/55');
   });
 
-  /* grid view — let a normal wheel scroll the strip sideways */
+  /* ── Grid view — let a normal wheel scroll the strip sideways ─────── */
   var strip = document.getElementById('gridStrip');
   if (strip) strip.addEventListener('wheel', function (e) {
     if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
