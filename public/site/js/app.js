@@ -373,21 +373,31 @@
       if (href && window.history.replaceState) window.history.replaceState(null, '', href);
     }
 
-    /* ── Calculate dynamic margin offset based on distance from activeIdx ─ */
-    /* Active photo = 34px indent (peak), 1 away = 22px, 2+ away = 8px */
-    var offsetsPattern = [34, 22, 8];
+    /* ── Dynamic organic sizes & staggered margin offsets ─────────────── */
+    var offsetsPattern = [44, 28, 16, 8];
+    // Organic size pattern: [width, height] variations (landscape, portrait, square)
+    var sizePattern = [
+      [78, 56],  // landscape
+      [58, 72],  // portrait
+      [70, 52],  // landscape wide
+      [64, 64],  // square
+      [56, 70],  // portrait tall
+      [72, 54],  // landscape
+      [62, 60],  // square-ish
+    ];
     function updateDynamicLayout() {
       var n = thumbs.length;
       thumbs.forEach(function (el, i) {
         var dist = Math.abs(i - activeIdx);
-        // Also account for circular wrap-around distance
         dist = Math.min(dist, n - dist);
 
         var ml = (dist < offsetsPattern.length) ? offsetsPattern[dist] : 8;
-        el.style.transition = 'margin-left 0.4s ease-out, transform 0.3s ease-out, opacity 0.3s ease-out';
+        var sz = sizePattern[i % sizePattern.length];
+
+        el.style.transition = 'margin-left 0.4s ease-out, transform 0.3s ease-out, opacity 0.3s ease-out, width 0.3s ease-out, height 0.3s ease-out';
         el.style.marginLeft = ml + 'px';
-        el.style.width = '50px';
-        el.style.height = '52px';
+        el.style.width = sz[0] + 'px';
+        el.style.height = sz[1] + 'px';
       });
     }
 

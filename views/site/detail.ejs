@@ -3,7 +3,7 @@
 
     <%# ── Left thumbnail slider — organic staggered layout like reference ─── %>
       <aside id="thumbRail"
-        class="fixed left-0 top-0 bottom-0 z-20 w-[8vw] min-w-[110px] max-w-[130px] flex flex-col justify-center select-none py-4 px-2">
+        class="fixed left-0 top-0 bottom-0 z-20 w-[10vw] min-w-[150px] max-w-[180px] flex flex-col justify-center select-none py-4 px-3">
 
         <%# Slider viewport %>
           <div id="railViewport" class="overflow-hidden w-full max-h-[92vh] flex flex-col py-1">
@@ -75,7 +75,7 @@
 
         <%# ── Main stage — photo fills center, right padding adjusts when drawer opens ── %>
           <main id="stage"
-            class="h-screen flex flex-col items-center justify-center py-4 pl-[120px] pr-[120px] transition-all duration-500 ease-out">
+            class="h-screen flex flex-col items-center justify-center py-4 pl-[180px] pr-[120px] transition-all duration-500 ease-out">
             <div class="flex-1 flex items-center justify-center w-full">
               <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>"
                 class="fade-up max-h-[82vh] w-auto max-w-full object-contain block">
