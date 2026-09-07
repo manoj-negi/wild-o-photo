@@ -25,7 +25,7 @@ const getCollections = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT collection FROM photos"
+      "SELECT collection_id FROM photos"
     );
 
     if (search) {

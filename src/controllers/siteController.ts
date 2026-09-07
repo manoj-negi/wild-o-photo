@@ -13,9 +13,10 @@ interface DBPhotoRow extends RowDataPacket {
   url: string;
   s3_key: string;
   alt: string;
-  category: string;
-  collection: string;
-  camera: string;
+  category_id?: number | null;
+  collection_id?: number | null;
+  camera_id?: number | null;
+  lens_id?: number | null;
   date: string;
   description: string;
   alt_note?: string;
@@ -24,7 +25,6 @@ interface DBPhotoRow extends RowDataPacket {
   w: string;
   h: string;
   live: number | boolean;
-  views: any;
   metadata: any;
 }
 
@@ -75,16 +75,6 @@ const parseMeta = (raw: any): Record<string, string> => {
   return map;
 };
 
-/** Parse the JSON views column */
-const parseViews = (raw: any): string[] => {
-  if (!raw) return ["Flow", "Grid"];
-  if (Array.isArray(raw)) return raw;
-  if (typeof raw === "string") {
-    try { return JSON.parse(raw); } catch { return ["Flow", "Grid"]; }
-  }
-  return ["Flow", "Grid"];
-};
-
 /**
  * Map a DB row into the shape the site views & API expect.
  * All numeric l/t/w/h are returned as numbers (vw units).
@@ -95,9 +85,8 @@ const mapToSitePhoto = (
 ) => {
   const meta = parseMeta(row.metadata);
   const getMeta = (k: string) => meta[k] || meta[k.toLowerCase()] || "";
-  const views = parseViews(row.views);
   const src = buildPhotoUrl(row);
-  const collectionName = row.collection || "";
+  const collectionName = (row as any).col_name || "";
 
   return {
     // flow / grid positioning (keep as strings in DB, expose as numbers)
@@ -113,20 +102,20 @@ const mapToSitePhoto = (
     title: row.title || row.cap || "",
     ref: row.ref || "",
     // taxonomy
-    category: row.category || "",
+    category: (row as any).cat_name || "",
     collection: collectionName,
     // detail-panel fields
     about: row.description || "",
     altNote: row.alt_note || "",
-    aboutCollection: collectionMap[collectionName] || "",
-    camera: row.camera || getMeta("Camera"),
-    lens: getMeta("Lens"),
+    aboutCollection: (row as any).col_desc || collectionMap[collectionName] || "",
+    camera: (row as any).cam_model || getMeta("Camera"),
+    lens: (row as any).len_model || getMeta("Lens"),
     location: getMeta("Location"),
     settings: getMeta("Settings"),
     date: row.date || "",
     // flags
     live: Boolean(row.live),
-    views,
+    views: ["Flow", "Grid"],
   };
 };
 
@@ -150,8 +139,6 @@ const buildCameraMenu = (
   const brandMap: Record<string, { name: string; count: number }[]> = {};
   cameraRows.forEach(row => {
     const brand = row.brand || "Other";
-    // The model column already contains the full name (e.g. "Sony α1", "Canon EOS R6")
-    // The photos.camera column is also stored as the full model string.
     const name = (row.model || "").trim();
     const count = countMap[name.toLowerCase()] || 0;
     if (!brandMap[brand]) brandMap[brand] = [];
@@ -161,28 +148,61 @@ const buildCameraMenu = (
   return Object.entries(brandMap).map(([brand, models]) => ({ brand, models }));
 };
 
+/** SELECT statement joining entity tables by ID */
+const SELECT_SITE_PHOTOS = `
+  SELECT 
+    p.*,
+    cat.name AS cat_name,
+    col.name AS col_name,
+    col.description AS col_desc,
+    cam.brand AS cam_brand,
+    cam.model AS cam_model,
+    len.brand AS len_brand,
+    len.model AS len_model
+  FROM photos p
+  LEFT JOIN categories cat ON p.category_id = cat.id
+  LEFT JOIN collections col ON p.collection_id = col.id
+  LEFT JOIN cameras cam ON p.camera_id = cam.id
+  LEFT JOIN lenses len ON p.lens_id = len.id
+`;
+
+const formatCameraName = (brand?: string, model?: string, fallback?: string): string => {
+  if (!model) return fallback || "";
+  if (!brand || model.toLowerCase().startsWith(brand.toLowerCase())) return model;
+  return `${brand} ${model}`;
+};
+
+const formatLensName = (brand?: string, model?: string, fallback?: string): string => {
+  if (!model) return fallback || "";
+  if (!brand || model.toLowerCase().startsWith(brand.toLowerCase())) return model;
+  return `${brand} ${model}`;
+};
+
 // ── Rendered page handlers ───────────────────────────────────────────────────
 
 /** GET / — flow view */
 const getFlow = async (req: Request, res: Response) => {
   try {
-    const [photoRows] = await pool.query<DBPhotoRow[]>(
-      `SELECT * FROM photos WHERE live = 1
-        AND (JSON_CONTAINS(views, '"Flow"') OR JSON_LENGTH(views) = 0 OR views IS NULL)
-       ORDER BY id DESC`
-    );
-    const [collRows] = await pool.query<DBCollectionRow[]>(
-      "SELECT name, description FROM collections ORDER BY id ASC"
+    const [photoRows] = await pool.query<any[]>(
+      `${SELECT_SITE_PHOTOS}
+       WHERE p.live = 1
+       ORDER BY p.id DESC`
     );
     const [camRows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
     );
 
-    const collectionMap: Record<string, string> = {};
-    collRows.forEach(c => { collectionMap[c.name] = c.description || ""; });
+    const photos = photoRows.map(r => {
+      const p = mapToSitePhoto(r, {});
+      p.category = r.cat_name || p.category;
+      p.collection = r.col_name || p.collection;
+      p.aboutCollection = r.col_desc || p.aboutCollection;
+      p.camera = formatCameraName(r.cam_brand, r.cam_model, p.camera);
+      p.lens = formatLensName(r.len_brand, r.len_model, p.lens);
+      return p;
+    });
 
-    const photos = photoRows.map(r => mapToSitePhoto(r, collectionMap));
-    const photoCameras = photoRows.map(r => r.camera || "");
+    const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
     const cameras = buildCameraMenu(camRows, photoCameras);
 
     res.render("index", { title: "Of Wild & Walls", photos, cameras });
@@ -195,23 +215,26 @@ const getFlow = async (req: Request, res: Response) => {
 /** GET /grid — grid view */
 const getGrid = async (req: Request, res: Response) => {
   try {
-    const [photoRows] = await pool.query<DBPhotoRow[]>(
-      `SELECT * FROM photos WHERE live = 1
-        AND (JSON_CONTAINS(views, '"Grid"') OR JSON_LENGTH(views) = 0 OR views IS NULL)
-       ORDER BY id DESC`
-    );
-    const [collRows] = await pool.query<DBCollectionRow[]>(
-      "SELECT name, description FROM collections ORDER BY id ASC"
+    const [photoRows] = await pool.query<any[]>(
+      `${SELECT_SITE_PHOTOS}
+       WHERE p.live = 1
+       ORDER BY p.id DESC`
     );
     const [camRows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
     );
 
-    const collectionMap: Record<string, string> = {};
-    collRows.forEach(c => { collectionMap[c.name] = c.description || ""; });
+    const photos = photoRows.map(r => {
+      const p = mapToSitePhoto(r, {});
+      p.category = r.cat_name || p.category;
+      p.collection = r.col_name || p.collection;
+      p.aboutCollection = r.col_desc || p.aboutCollection;
+      p.camera = formatCameraName(r.cam_brand, r.cam_model, p.camera);
+      p.lens = formatLensName(r.len_brand, r.len_model, p.lens);
+      return p;
+    });
 
-    const photos = photoRows.map(r => mapToSitePhoto(r, collectionMap));
-    const photoCameras = photoRows.map(r => r.camera || "");
+    const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
     const cameras = buildCameraMenu(camRows, photoCameras);
 
     res.render("grid", { title: "Of Wild & Walls", photos, cameras });
@@ -224,74 +247,62 @@ const getGrid = async (req: Request, res: Response) => {
 /** GET /photo/:slug — detail view */
 const getPhotoDetail = async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query<DBPhotoRow[]>(
-      "SELECT * FROM photos WHERE slug = ? AND live = 1",
+    const [rows] = await pool.query<any[]>(
+      `${SELECT_SITE_PHOTOS} WHERE p.slug = ? AND p.live = 1`,
       [req.params.slug]
     );
     if (rows.length === 0) return res.status(404).send("Photo not found");
 
-    const [collRows] = await pool.query<DBCollectionRow[]>(
-      "SELECT name, description FROM collections ORDER BY id ASC"
-    );
-    // all live photos for the thumbnail rail
-    const [allPhotoRows] = await pool.query<DBPhotoRow[]>(
-      "SELECT * FROM photos WHERE live = 1 ORDER BY id DESC"
+    const [allPhotoRows] = await pool.query<any[]>(
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC`
     );
     const [camRows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
     );
 
-    const collectionMap: Record<string, string> = {};
-    collRows.forEach(c => { collectionMap[c.name] = c.description || ""; });
-
-    const buildDetails = (r: DBPhotoRow) => {
+    const buildDetailsFromJoined = (r: any) => {
       const m = parseMeta(r.metadata);
       const gM = (k: string) => m[k] || m[k.toLowerCase()] || "";
+      const catName = r.cat_name || "Photography";
+      const colName = r.col_name || "";
+      const camName = formatCameraName(r.cam_brand, r.cam_model, gM("Camera"));
+      const lenName = formatLensName(r.len_brand, r.len_model, gM("Lens"));
+
       return {
-        kicker: r.category || "Photography",
+        kicker: catName,
         title: r.cap || r.title || "",
         ref: r.ref || "",
         about: r.description || "",
         altNote: r.alt_note || "",
-        collection: collectionMap[r.collection || ""] || r.collection || "",
+        collection: r.col_desc || colName,
         collectionHref: "#",
-        camera: r.camera || gM("Camera"),
-        lens: gM("Lens"),
+        camera: camName,
+        lens: lenName,
         date: r.date || "",
         location: gM("Location"),
-        category: r.category || "",
+        category: catName,
         settings: gM("Settings"),
       };
     };
 
-    const photo = mapToSitePhoto(rows[0], collectionMap);
-    const photos = allPhotoRows.map(r => ({
-      ...mapToSitePhoto(r, collectionMap),
-      details: buildDetails(r)
-    }));
-    const photoCameras = allPhotoRows.map(r => r.camera || "");
-    const cameras = buildCameraMenu(camRows, photoCameras);
-
-    // Build the details object the detail.ejs panel expects
-    const d = rows[0];
-    const meta = parseMeta(d.metadata);
-    const getMeta = (k: string) => meta[k] || meta[k.toLowerCase()] || "";
-
-    const details = {
-      kicker: d.category || "Photography",
-      title: d.cap || d.title || "",
-      ref: d.ref || "",
-      about: d.description || "",
-      altNote: d.alt_note || "",
-      collection: collectionMap[d.collection || ""] || d.collection || "",
-      collectionHref: "#",
-      camera: d.camera || getMeta("Camera"),
-      lens: getMeta("Lens"),
-      date: d.date || "",
-      location: getMeta("Location"),
-      category: d.category || "",
-      settings: getMeta("Settings"),
+    const mapJoinedToSitePhoto = (r: any) => {
+      const p = mapToSitePhoto(r, {});
+      p.category = r.cat_name || p.category;
+      p.collection = r.col_name || p.collection;
+      p.aboutCollection = r.col_desc || p.aboutCollection;
+      p.camera = formatCameraName(r.cam_brand, r.cam_model, p.camera);
+      p.lens = formatLensName(r.len_brand, r.len_model, p.lens);
+      return p;
     };
+
+    const photo = mapJoinedToSitePhoto(rows[0]);
+    const photos = allPhotoRows.map(r => ({
+      ...mapJoinedToSitePhoto(r),
+      details: buildDetailsFromJoined(r)
+    }));
+    const photoCameras = allPhotoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
+    const cameras = buildCameraMenu(camRows, photoCameras);
+    const details = buildDetailsFromJoined(rows[0]);
 
     res.render("detail", {
       title: photo.cap,
@@ -312,9 +323,7 @@ const getPhotoDetail = async (req: Request, res: Response) => {
 const getFlowAPI = async (req: Request, res: Response) => {
   try {
     const [photoRows] = await pool.query<DBPhotoRow[]>(
-      `SELECT * FROM photos WHERE live = 1
-        AND (JSON_CONTAINS(views, '"Flow"') OR JSON_LENGTH(views) = 0 OR views IS NULL)
-       ORDER BY id DESC`
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC`
     );
     const [collRows] = await pool.query<DBCollectionRow[]>(
       "SELECT name, description FROM collections ORDER BY id ASC"
@@ -335,9 +344,7 @@ const getFlowAPI = async (req: Request, res: Response) => {
 const getGridAPI = async (req: Request, res: Response) => {
   try {
     const [photoRows] = await pool.query<DBPhotoRow[]>(
-      `SELECT * FROM photos WHERE live = 1
-        AND (JSON_CONTAINS(views, '"Grid"') OR JSON_LENGTH(views) = 0 OR views IS NULL)
-       ORDER BY id DESC`
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC`
     );
     const [collRows] = await pool.query<DBCollectionRow[]>(
       "SELECT name, description FROM collections ORDER BY id ASC"
@@ -357,28 +364,22 @@ const getGridAPI = async (req: Request, res: Response) => {
 /** GET /api/photos — all live photos (both views) */
 const getPhotosAPI = async (req: Request, res: Response) => {
   try {
-    const view = String(req.query.view || "").trim().toLowerCase(); // 'flow' | 'grid' | ''
-    const category = String(req.query.category || "").trim();
-    const collection = String(req.query.collection || "").trim();
+    const category_id = String(req.query.category_id || "").trim();
+    const collection_id = String(req.query.collection_id || "").trim();
     const q = String(req.query.q || req.query.search || "").trim().toLowerCase();
 
-    let sql = "SELECT * FROM photos WHERE live = 1";
+    let sql = `${SELECT_SITE_PHOTOS} WHERE p.live = 1`;
     const params: any[] = [];
 
-    if (view === "flow") {
-      sql += ` AND (JSON_CONTAINS(views, '"Flow"') OR JSON_LENGTH(views) = 0 OR views IS NULL)`;
-    } else if (view === "grid") {
-      sql += ` AND (JSON_CONTAINS(views, '"Grid"') OR JSON_LENGTH(views) = 0 OR views IS NULL)`;
+    if (category_id) {
+      sql += " AND p.category_id = ?";
+      params.push(category_id);
     }
-    if (category) {
-      sql += " AND category = ?";
-      params.push(category);
+    if (collection_id) {
+      sql += " AND p.collection_id = ?";
+      params.push(collection_id);
     }
-    if (collection) {
-      sql += " AND collection = ?";
-      params.push(collection);
-    }
-    sql += " ORDER BY id DESC";
+    sql += " ORDER BY p.id DESC";
 
     const [photoRows] = await pool.query<DBPhotoRow[]>(sql, params);
     const [collRows] = await pool.query<DBCollectionRow[]>(
@@ -416,7 +417,7 @@ const getPhotosAPI = async (req: Request, res: Response) => {
 const getPhotoBySlugAPI = async (req: Request, res: Response) => {
   try {
     const [rows] = await pool.query<DBPhotoRow[]>(
-      "SELECT * FROM photos WHERE slug = ? AND live = 1",
+      `${SELECT_SITE_PHOTOS} WHERE p.slug = ? AND p.live = 1`,
       [req.params.slug]
     );
     if (rows.length === 0) {
@@ -436,18 +437,18 @@ const getPhotoBySlugAPI = async (req: Request, res: Response) => {
     const getMeta = (k: string) => meta[k] || meta[k.toLowerCase()] || "";
 
     const details = {
-      kicker: d.category || "Photography",
+      kicker: (d as any).cat_name || "Photography",
       title: d.cap || d.title || "",
       ref: d.ref || "",
       about: d.description || "",
       altNote: d.alt_note || "",
-      collection: collectionMap[d.collection || ""] || d.collection || "",
+      collection: (d as any).col_desc || collectionMap[(d as any).col_name || ""] || (d as any).col_name || "",
       collectionHref: "#",
-      camera: d.camera || getMeta("Camera"),
-      lens: getMeta("Lens"),
+      camera: (d as any).cam_model || getMeta("Camera"),
+      lens: (d as any).len_model || getMeta("Lens"),
       date: d.date || "",
       location: getMeta("Location"),
-      category: d.category || "",
+      category: (d as any).cat_name || "",
       settings: getMeta("Settings"),
     };
 
@@ -465,9 +466,9 @@ const getCamerasAPI = async (req: Request, res: Response) => {
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
     );
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT camera FROM photos WHERE live = 1"
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1`
     );
-    const photoCameras = photoRows.map(r => String(r.camera || ""));
+    const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, ""));
     const cameras = buildCameraMenu(camRows, photoCameras);
     res.json({ success: true, count: cameras.length, cameras });
   } catch (err) {
@@ -479,32 +480,33 @@ const getCamerasAPI = async (req: Request, res: Response) => {
 /** GET /api/lenses — distinct lenses used in live photos, with count */
 const getLensesAPI = async (req: Request, res: Response) => {
   try {
-    // Pull the raw lenses from the lenses table for the brand grouping
     const [lensRows] = await pool.query<RowDataPacket[]>(
       "SELECT id, brand, model FROM lenses ORDER BY id ASC"
     );
-    // Count usage: scan metadata of every live photo
-    const [photoRows] = await pool.query<DBPhotoRow[]>(
-      "SELECT metadata FROM photos WHERE live = 1"
+    const [photoRows] = await pool.query<RowDataPacket[]>(
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1`
     );
 
-    // Build a count map keyed by the lens string as stored in metadata
     const countMap: Record<string, number> = {};
     photoRows.forEach(r => {
       const meta = parseMeta(r.metadata);
-      const lens = (meta["Lens"] || meta["lens"] || "").trim();
-      if (lens) countMap[lens.toLowerCase()] = (countMap[lens.toLowerCase()] || 0) + 1;
+      const lensName = formatLensName(r.len_brand, r.len_model, meta["Lens"] || meta["lens"] || "");
+      const k = (lensName || "").trim().toLowerCase();
+      if (k) countMap[k] = (countMap[k] || 0) + 1;
+      if (r.len_model) {
+        const mK = String(r.len_model).trim().toLowerCase();
+        countMap[mK] = (countMap[mK] || 0) + 1;
+      }
     });
 
-    // Group lenses by brand using the lenses table
     const brandMap: Record<string, { name: string; count: number }[]> = {};
     lensRows.forEach((row: any) => {
       const brand = (row.brand || "Other").trim();
-      // model column stores the full lens name (may include brand prefix)
       const name = (row.model || "").trim();
-      const count = countMap[name.toLowerCase()] || 0;
+      const fullName = formatLensName(row.brand, row.model, name);
+      const count = countMap[name.toLowerCase()] || countMap[fullName.toLowerCase()] || 0;
       if (!brandMap[brand]) brandMap[brand] = [];
-      brandMap[brand].push({ name, count });
+      brandMap[brand].push({ name: fullName, count });
     });
 
     const lenses = Object.entries(brandMap).map(([brand, models]) => ({ brand, models }));
@@ -522,13 +524,12 @@ const getCategoriesAPI = async (req: Request, res: Response) => {
     const [catRows] = await pool.query<RowDataPacket[]>(
       "SELECT id, name AS title, parent, description FROM categories ORDER BY name ASC"
     );
-    // Count live photos per category
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT category FROM photos WHERE live = 1"
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1`
     );
     const countMap: Record<string, number> = {};
     photoRows.forEach(r => {
-      const k = (r.category || "").trim().toLowerCase();
+      const k = (r.cat_name || "").trim().toLowerCase();
       if (k) countMap[k] = (countMap[k] || 0) + 1;
     });
 
@@ -553,13 +554,12 @@ const getCollectionsAPI = async (req: Request, res: Response) => {
     const [collRows] = await pool.query<RowDataPacket[]>(
       "SELECT id, name AS title, description FROM collections ORDER BY name ASC"
     );
-    // Count live photos per collection
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT collection FROM photos WHERE live = 1"
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1`
     );
     const countMap: Record<string, number> = {};
     photoRows.forEach(r => {
-      const k = (r.collection || "").trim().toLowerCase();
+      const k = (r.col_name || "").trim().toLowerCase();
       if (k) countMap[k] = (countMap[k] || 0) + 1;
     });
 

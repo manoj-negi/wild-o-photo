@@ -10,9 +10,14 @@ export interface AdminPhoto {
   cap: string;
   title: string;
   ref: string;
+  category_id?: number | null;
+  collection_id?: number | null;
+  camera_id?: number | null;
+  lens_id?: number | null;
   category: string;
   collection: string;
   camera: string;
+  lens?: string;
   date: string;
   live: boolean;
   about: string;

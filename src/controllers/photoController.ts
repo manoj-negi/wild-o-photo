@@ -14,9 +14,14 @@ interface DBPhotoRow extends RowDataPacket {
   url: string;
   s3_key: string;
   alt: string;
-  category: string;
-  collection: string;
-  camera: string;
+  category_id?: number | null;
+  collection_id?: number | null;
+  camera_id?: number | null;
+  lens_id?: number | null;
+  category?: string;
+  collection?: string;
+  camera?: string;
+  lens?: string;
   date: string;
   description: string;
   alt_note?: string;
@@ -25,7 +30,6 @@ interface DBPhotoRow extends RowDataPacket {
   w: string;
   h: string;
   live: number | boolean;
-  views: any;
   metadata: any;
 }
 
@@ -48,21 +52,13 @@ const readMeta = (body: Request["body"]): MetaItem[] => {
 
 const blankPhoto = (): AdminPhoto => ({
   cap: "", slug: "", title: "", ref: "", category: "", collection: "", camera: "",
+  category_id: null, collection_id: null, camera_id: null, lens_id: null,
   date: "", about: "", altNote: "", src: "", alt: "",
   l: "", t: "", w: "", h: "", live: true, views: ["Flow", "Grid"],
   meta: []
 });
 
 const mapDBPhotoToAdminPhoto = (row: DBPhotoRow, collectionDescriptions: Record<string, string> = {}): AdminPhoto & Record<string, any> => {
-  let viewsArr: string[] = ["Flow", "Grid"];
-  if (row.views) {
-    if (typeof row.views === "string") {
-      try { viewsArr = JSON.parse(row.views); } catch (e) {}
-    } else if (Array.isArray(row.views)) {
-      viewsArr = row.views;
-    }
-  }
-
   let metaArr: MetaItem[] = [];
   if (row.metadata) {
     if (typeof row.metadata === "string") {
@@ -107,11 +103,15 @@ const mapDBPhotoToAdminPhoto = (row: DBPhotoRow, collectionDescriptions: Record<
     slug: row.slug || "",
     title: row.title || row.cap || "",
     ref: row.ref || "",
+    category_id: row.category_id || null,
+    collection_id: row.collection_id || null,
+    camera_id: row.camera_id || null,
+    lens_id: row.lens_id || null,
     category: row.category || "",
     collection: collectionName,
     aboutCollection: aboutCollection,
     camera: row.camera || getMeta("Camera"),
-    lens: getMeta("Lens"),
+    lens: row.lens || getMeta("Lens"),
     location: getMeta("Location"),
     settings: getMeta("Settings"),
     date: row.date || "",
@@ -124,10 +124,24 @@ const mapDBPhotoToAdminPhoto = (row: DBPhotoRow, collectionDescriptions: Record<
     w: row.w || "",
     h: row.h || "",
     live: Boolean(row.live),
-    views: viewsArr,
+    views: ["Flow", "Grid"],
     meta: metaArr
   };
 };
+
+const SELECT_ADMIN_PHOTOS = `
+  SELECT 
+    p.*,
+    cat.name AS category,
+    col.name AS collection,
+    cam.model AS camera,
+    l.model AS lens
+  FROM photos p
+  LEFT JOIN categories cat ON p.category_id = cat.id
+  LEFT JOIN collections col ON p.collection_id = col.id
+  LEFT JOIN cameras cam ON p.camera_id = cam.id
+  LEFT JOIN lenses l ON p.lens_id = l.id
+`;
 
 const getPhotos = async (req: Request, res: Response) => {
   try {
@@ -135,11 +149,11 @@ const getPhotos = async (req: Request, res: Response) => {
     const limit = 8;
     const search = String(req.query.search || req.query.q || "").trim();
 
-    const [photoRows] = await pool.query<DBPhotoRow[]>("SELECT * FROM photos ORDER BY id DESC");
-    const [catRows] = await pool.query<RowDataPacket[]>("SELECT name AS title FROM categories ORDER BY id ASC");
-    const [collRows] = await pool.query<RowDataPacket[]>("SELECT name AS title, description FROM collections ORDER BY id ASC");
-    const [camRows] = await pool.query<RowDataPacket[]>("SELECT brand, model FROM cameras ORDER BY id ASC");
-    const [lensRows] = await pool.query<RowDataPacket[]>("SELECT brand, model FROM lenses ORDER BY id ASC");
+    const [photoRows] = await pool.query<DBPhotoRow[]>(`${SELECT_ADMIN_PHOTOS} ORDER BY p.id DESC`);
+    const [catRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM categories ORDER BY id ASC");
+    const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title, description FROM collections ORDER BY id ASC");
+    const [camRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM cameras ORDER BY id ASC");
+    const [lensRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM lenses ORDER BY id ASC");
 
     const collectionMap: Record<string, string> = {};
     collRows.forEach(c => { collectionMap[c.title] = c.description || ""; });
@@ -155,7 +169,7 @@ const getPhotos = async (req: Request, res: Response) => {
         p.category.toLowerCase().includes(q) ||
         p.collection.toLowerCase().includes(q) ||
         p.camera.toLowerCase().includes(q) ||
-        p.lens.toLowerCase().includes(q) ||
+        (p.lens || "").toLowerCase().includes(q) ||
         p.location.toLowerCase().includes(q) ||
         p.date.toLowerCase().includes(q) ||
         p.about.toLowerCase().includes(q) ||
@@ -198,10 +212,10 @@ const getPhotos = async (req: Request, res: Response) => {
 
 const getNewPhotoForm = async (req: Request, res: Response) => {
   try {
-    const [catRows] = await pool.query<RowDataPacket[]>("SELECT name AS title FROM categories ORDER BY id ASC");
-    const [collRows] = await pool.query<RowDataPacket[]>("SELECT name AS title FROM collections ORDER BY id ASC");
-    const [camRows] = await pool.query<RowDataPacket[]>("SELECT brand, model FROM cameras ORDER BY id ASC");
-    const [lensRows] = await pool.query<RowDataPacket[]>("SELECT brand, model FROM lenses ORDER BY id ASC");
+    const [catRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM categories ORDER BY id ASC");
+    const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM collections ORDER BY id ASC");
+    const [camRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM cameras ORDER BY id ASC");
+    const [lensRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM lenses ORDER BY id ASC");
 
     res.render("photo-form", {
       nav: "add",
@@ -220,15 +234,15 @@ const getNewPhotoForm = async (req: Request, res: Response) => {
 
 const getEditPhotoForm = async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query<DBPhotoRow[]>("SELECT * FROM photos WHERE slug = ?", [req.params.slug]);
+    const [rows] = await pool.query<DBPhotoRow[]>(`${SELECT_ADMIN_PHOTOS} WHERE p.slug = ?`, [req.params.slug]);
     if (rows.length === 0) {
       return res.status(404).send("Photo not found");
     }
 
-    const [catRows] = await pool.query<RowDataPacket[]>("SELECT name AS title FROM categories ORDER BY id ASC");
-    const [collRows] = await pool.query<RowDataPacket[]>("SELECT name AS title, description FROM collections ORDER BY id ASC");
-    const [camRows] = await pool.query<RowDataPacket[]>("SELECT brand, model FROM cameras ORDER BY id ASC");
-    const [lensRows] = await pool.query<RowDataPacket[]>("SELECT brand, model FROM lenses ORDER BY id ASC");
+    const [catRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM categories ORDER BY id ASC");
+    const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title, description FROM collections ORDER BY id ASC");
+    const [camRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM cameras ORDER BY id ASC");
+    const [lensRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM lenses ORDER BY id ASC");
 
     const collectionMap: Record<string, string> = {};
     collRows.forEach(c => { collectionMap[c.title] = c.description || ""; });
@@ -277,9 +291,10 @@ const createPhoto = async (req: Request, res: Response) => {
     const slug = slugify(req.body.slug || cap);
     const title = (req.body.title || cap).trim();
     const ref = (req.body.ref || "").trim();
-    const category = (req.body.category || "").trim();
-    const collection = (req.body.collection || "").trim();
-    const camera = (req.body.camera || "").trim();
+    const category_id = req.body.category_id ? parseInt(req.body.category_id, 10) : null;
+    const collection_id = req.body.collection_id ? parseInt(req.body.collection_id, 10) : null;
+    const camera_id = req.body.camera_id ? parseInt(req.body.camera_id, 10) : null;
+    const lens_id = req.body.lens_id ? parseInt(req.body.lens_id, 10) : null;
     const date = (req.body.date || "").trim();
     const about = (req.body.about || "").trim();
     const altNote = (req.body.altNote || "").trim();
@@ -289,7 +304,6 @@ const createPhoto = async (req: Request, res: Response) => {
     const w = req.body.w || "";
     const h = req.body.h || "";
     const live = req.body.live !== "draft";
-    const views = JSON.stringify(asArray(req.body.views));
     const metadata = JSON.stringify(readMeta(req.body));
 
     if (!slug) {
@@ -298,9 +312,9 @@ const createPhoto = async (req: Request, res: Response) => {
 
     await pool.query(
       `INSERT INTO photos (
-        title, cap, slug, ref, url, s3_key, alt, category, collection, camera, date, description, l, t, w, h, live, views, metadata
+        title, cap, slug, ref, url, s3_key, alt, category_id, collection_id, camera_id, lens_id, date, description, l, t, w, h, live, metadata
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, cap, slug, ref, photoUrl, s3Key, alt, category, collection, camera, date, about, l, t, w, h, live, views, metadata]
+      [title, cap, slug, ref, photoUrl, s3Key, alt, category_id, collection_id, camera_id, lens_id, date, about, l, t, w, h, live, metadata]
     );
 
     res.redirect("/admin/photos?flash=Photo+added");
@@ -344,9 +358,10 @@ const updatePhoto = async (req: Request, res: Response) => {
     const slug = slugify(req.body.slug || cap) || existing.slug;
     const title = (req.body.title || cap).trim();
     const ref = (req.body.ref || "").trim();
-    const category = (req.body.category || "").trim();
-    const collection = (req.body.collection || "").trim();
-    const camera = (req.body.camera || "").trim();
+    const category_id = req.body.category_id ? parseInt(req.body.category_id, 10) : null;
+    const collection_id = req.body.collection_id ? parseInt(req.body.collection_id, 10) : null;
+    const camera_id = req.body.camera_id ? parseInt(req.body.camera_id, 10) : null;
+    const lens_id = req.body.lens_id ? parseInt(req.body.lens_id, 10) : null;
     const date = (req.body.date || "").trim();
     const about = (req.body.about || "").trim();
     const altNote = (req.body.altNote || "").trim();
@@ -356,14 +371,13 @@ const updatePhoto = async (req: Request, res: Response) => {
     const w = req.body.w || "";
     const h = req.body.h || "";
     const live = req.body.live !== "draft";
-    const views = JSON.stringify(asArray(req.body.views));
     const metadata = JSON.stringify(readMeta(req.body));
 
     await pool.query(
       `UPDATE photos SET
-        title = ?, cap = ?, slug = ?, ref = ?, url = ?, s3_key = ?, alt = ?, category = ?, collection = ?, camera = ?, date = ?, description = ?, l = ?, t = ?, w = ?, h = ?, live = ?, views = ?, metadata = ?
+        title = ?, cap = ?, slug = ?, ref = ?, url = ?, s3_key = ?, alt = ?, category_id = ?, collection_id = ?, camera_id = ?, lens_id = ?, date = ?, description = ?, l = ?, t = ?, w = ?, h = ?, live = ?, metadata = ?
       WHERE slug = ?`,
-      [title, cap, slug, ref, photoUrl, s3Key, alt, category, collection, camera, date, about, l, t, w, h, live, views, metadata, targetSlug]
+      [title, cap, slug, ref, photoUrl, s3Key, alt, category_id, collection_id, camera_id, lens_id, date, about, l, t, w, h, live, metadata, targetSlug]
     );
 
     res.redirect("/admin/photos?flash=Photo+saved");
@@ -398,8 +412,8 @@ const deletePhoto = async (req: Request, res: Response) => {
 const getPhotosAPI = async (req: Request, res: Response) => {
   try {
     const search = String(req.query.search || req.query.q || "").trim();
-    const [photoRows] = await pool.query<DBPhotoRow[]>("SELECT * FROM photos ORDER BY id DESC");
-    const [collRows] = await pool.query<RowDataPacket[]>("SELECT name AS title, description FROM collections ORDER BY id ASC");
+    const [photoRows] = await pool.query<DBPhotoRow[]>(`${SELECT_ADMIN_PHOTOS} ORDER BY p.id DESC`);
+    const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title, description FROM collections ORDER BY id ASC");
     const collectionMap: Record<string, string> = {};
     collRows.forEach(c => { collectionMap[c.title] = c.description || ""; });
 
@@ -414,7 +428,7 @@ const getPhotosAPI = async (req: Request, res: Response) => {
         p.category.toLowerCase().includes(q) ||
         p.collection.toLowerCase().includes(q) ||
         p.camera.toLowerCase().includes(q) ||
-        p.lens.toLowerCase().includes(q) ||
+        (p.lens || "").toLowerCase().includes(q) ||
         p.location.toLowerCase().includes(q) ||
         p.date.toLowerCase().includes(q) ||
         p.about.toLowerCase().includes(q) ||
@@ -431,11 +445,11 @@ const getPhotosAPI = async (req: Request, res: Response) => {
 
 const getPhotoBySlugAPI = async (req: Request, res: Response) => {
   try {
-    const [rows] = await pool.query<DBPhotoRow[]>("SELECT * FROM photos WHERE slug = ?", [req.params.slug]);
+    const [rows] = await pool.query<DBPhotoRow[]>(`${SELECT_ADMIN_PHOTOS} WHERE p.slug = ?`, [req.params.slug]);
     if (rows.length === 0) {
       return res.status(404).json({ success: false, error: "Photo not found" });
     }
-    const [collRows] = await pool.query<RowDataPacket[]>("SELECT name AS title, description FROM collections ORDER BY id ASC");
+    const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title, description FROM collections ORDER BY id ASC");
     const collectionMap: Record<string, string> = {};
     collRows.forEach(c => { collectionMap[c.title] = c.description || ""; });
 
@@ -458,3 +472,4 @@ export default {
   getPhotosAPI,
   getPhotoBySlugAPI
 };
+

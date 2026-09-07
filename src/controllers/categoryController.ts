@@ -20,7 +20,7 @@ const getCategories = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT category FROM photos"
+      "SELECT category_id FROM photos"
     );
 
     if (search) {

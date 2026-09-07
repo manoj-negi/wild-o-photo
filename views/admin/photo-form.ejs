@@ -46,43 +46,35 @@
                   <input class="field mt-1.5" name="ref" value="<%= photo.ref %>" placeholder="HR.01 / 05" required>
                 </label>
                 <label class="label">Category <span class="text-red-500">*</span>
-                  <select class="field mt-1.5" name="category" required>
+                  <select class="field mt-1.5" name="category_id" required>
                     <option value="">Unassigned</option>
                     <% categories.forEach(function (c) { %>
-                      <option value="<%= c.title %>" <%= photo.category === c.title ? "selected" : "" %>><%= c.title %></option>
+                      <option value="<%= c.id %>" <%= Number(photo.category_id) === Number(c.id) ? "selected" : "" %>><%= c.title %></option>
                     <% }); %>
                   </select>
                 </label>
                 <label class="label">Collection <span class="text-red-500">*</span>
-                  <select class="field mt-1.5" name="collection" required>
+                  <select class="field mt-1.5" name="collection_id" required>
                     <option value="">Unassigned</option>
                     <% (typeof collections !== "undefined" ? collections : []).forEach(function (col) { %>
-                      <option value="<%= col.title || col.name %>" <%= photo.collection === (col.title || col.name) ? "selected" : "" %>><%= col.title || col.name %></option>
+                      <option value="<%= col.id %>" <%= Number(photo.collection_id) === Number(col.id) ? "selected" : "" %>><%= col.title || col.name %></option>
                     <% }); %>
                   </select>
                 </label>
                 <label class="label">Camera <span class="text-red-500">*</span>
-                  <select class="field mt-1.5" name="camera" required>
+                  <select class="field mt-1.5" name="camera_id" required>
                     <option value="">Unassigned</option>
-                    <% let cameraMatched = false; %>
-                    <% (typeof cameras !== "undefined" ? cameras : []).forEach(function (cam) { const camName = cam.brand ? (cam.brand + ' ' + cam.model) : cam.model; const isSel = (photo.camera === camName || photo.camera === cam.model); if (isSel) cameraMatched = true; %>
-                      <option value="<%= camName %>" <%= isSel ? "selected" : "" %>><%= camName %></option>
+                    <% (typeof cameras !== "undefined" ? cameras : []).forEach(function (cam) { const camName = cam.brand ? (cam.brand + ' ' + cam.model) : cam.model; %>
+                      <option value="<%= cam.id %>" <%= Number(photo.camera_id) === Number(cam.id) ? "selected" : "" %>><%= camName %></option>
                     <% }); %>
-                    <% if (photo.camera && !cameraMatched) { %>
-                      <option value="<%= photo.camera %>" selected><%= photo.camera %></option>
-                    <% } %>
                   </select>
                 </label>
                 <label class="label">Lens <span class="text-red-500">*</span>
-                  <select class="field mt-1.5" name="lens" required>
+                  <select class="field mt-1.5" name="lens_id" required>
                     <option value="">Unassigned</option>
-                    <% let lensMatched = false; %>
-                    <% (typeof lenses !== "undefined" ? lenses : []).forEach(function (l) { const lensName = l.brand ? (l.brand + ' ' + l.model) : l.model; const isSel = (photo.lens === lensName || photo.lens === l.model); if (isSel) lensMatched = true; %>
-                      <option value="<%= lensName %>" <%= isSel ? "selected" : "" %>><%= lensName %></option>
+                    <% (typeof lenses !== "undefined" ? lenses : []).forEach(function (l) { const lensName = l.brand ? (l.brand + ' ' + l.model) : l.model; %>
+                      <option value="<%= l.id %>" <%= Number(photo.lens_id) === Number(l.id) ? "selected" : "" %>><%= lensName %></option>
                     <% }); %>
-                    <% if (photo.lens && !lensMatched) { %>
-                      <option value="<%= photo.lens %>" selected><%= photo.lens %></option>
-                    <% } %>
                   </select>
                 </label>
                 <label class="label">Date <span class="text-red-500">*</span>

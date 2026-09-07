@@ -29,7 +29,7 @@ const getCameras = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT camera FROM photos"
+      "SELECT camera_id FROM photos"
     );
 
     if (search) {
