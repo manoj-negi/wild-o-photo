@@ -7,12 +7,20 @@
 
         <%# Slider viewport %>
           <div id="railViewport" class="overflow-hidden w-full max-h-[92vh] flex flex-col py-1">
-            <div id="railTrack"
+            <div id="railTrack" data-count="<%= photos.length %>"
               class="flex flex-col gap-[6px] transition-transform duration-500 ease-[cubic-bezier(.2,.7,.2,1)] py-1">
-              <% var railLayout=[ [10, 80, 82], [10, 80, 82], [10, 80, 82], [10, 80, 82], [30, 80, 82], [48, 80, 82], [30,
+              <%
+                // The rail loops endlessly (wheel/arrow keys cycle through photos forever). To make
+                // that feel seamless — instead of visibly snapping back to the top when it wraps —
+                // the thumb list is rendered three times in a row; app.js walks through the middle
+                // copy and silently re-centers into it whenever the edge copies are reached, so the
+                // wrap is invisible (the same photos are shown either side of the reset).
+                var railLayout=[ [10, 80, 82], [10, 80, 82], [10, 80, 82], [10, 80, 82], [30, 80, 82], [48, 80, 82], [30,
                 80, 82], [10, 80, 82], [10, 80, 82] ]; var qs=(typeof filterQuery !=='undefined' && filterQuery) ? '?' +
-                filterQuery : ''; photos.forEach(function (p, i) { var lay=railLayout[i %
-                railLayout.length]; var isActive=(p.slug===photo.slug); var dData=p.details || details || {}; %>
+                filterQuery : '';
+                for (var railCopy = 0; railCopy < 3; railCopy++) {
+                  photos.forEach(function (p, i) { var lay=railLayout[i %
+                  railLayout.length]; var dData=p.details || details || {}; %>
                 <a href="/photo/<%= p.slug %><%= qs %>"
                   class="rail-thumb rail-in group block shrink-0 overflow-hidden transition-all duration-300 relative rounded-sm"
                   data-src="<%= p.src %>" data-alt="<%= p.alt %>" data-href="/photo/<%= p.slug %><%= qs %>"
@@ -29,7 +37,8 @@
                   <img src="<%= p.src %>" alt="<%= p.alt %>" loading="lazy"
                     class="w-full h-full object-cover">
                 </a>
-                <% }); %>
+                  <% });
+                } %>
             </div>
           </div>
 

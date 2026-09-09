@@ -289,13 +289,21 @@
     var currentIdx = 0;  // index of top-most visible thumb
     var STEP = 1;        // advance one thumb at a time
 
-    /* Find which thumb matches the main photo already on screen */
-    var activeIdx = 0;
+    /* The rail is rendered three times in a row (see detail.ejs) so scrolling past either
+     * end continues into a duplicate copy instead of visibly snapping back to the start.
+     * photoCount = number of *unique* photos; the "real" middle copy lives at
+     * [photoCount, 2*photoCount - 1] and is where we keep activeIdx re-centered. */
+    var photoCount = parseInt(track.getAttribute('data-count'), 10) || Math.round(thumbs.length / 3) || thumbs.length;
+
+    /* Find which thumb (within the middle copy) matches the main photo already on screen,
+     * so we start with a full copy's worth of buffer to scroll in either direction. */
+    var activeIdx = photoCount;
     if (mainPhoto) {
-      thumbs.forEach(function (th, i) {
-        if (th.getAttribute('data-src') === mainPhoto.getAttribute('src')) activeIdx = i;
-      });
+      for (var mi = photoCount; mi < Math.min(2 * photoCount, thumbs.length); mi++) {
+        if (thumbs[mi].getAttribute('data-src') === mainPhoto.getAttribute('src')) { activeIdx = mi; break; }
+      }
     }
+    if (activeIdx >= thumbs.length) activeIdx = thumbs.length - 1;
 
     /* ── Measure a single thumb height (incl. gap) ───────────────────── */
     function thumbUnitHeight() {
@@ -399,16 +407,16 @@
       [72, 54],  // landscape
       [62, 60],  // square-ish
     ];
-    function updateDynamicLayout() {
-      var n = thumbs.length;
+    function updateDynamicLayout(animate) {
       thumbs.forEach(function (el, i) {
         var dist = Math.abs(i - activeIdx);
-        dist = Math.min(dist, n - dist);
 
         var ml = (dist < offsetsPattern.length) ? offsetsPattern[dist] : 8;
         var sz = sizePattern[i % sizePattern.length];
 
-        el.style.transition = 'margin-left 0.4s ease-out, transform 0.3s ease-out, opacity 0.3s ease-out, width 0.3s ease-out, height 0.3s ease-out';
+        el.style.transition = animate === false
+          ? 'none'
+          : 'margin-left 0.4s ease-out, transform 0.3s ease-out, opacity 0.3s ease-out, width 0.3s ease-out, height 0.3s ease-out';
         el.style.marginLeft = ml + 'px';
         el.style.width = sz[0] + 'px';
         el.style.height = sz[1] + 'px';
@@ -417,18 +425,37 @@
 
     /* ── Switch active index & center rail ──────────────────────────── */
     function setActivePhoto(idx) {
-      var n = thumbs.length;
-      if (n === 0) return;
-      activeIdx = ((idx % n) + n) % n; // Circular modulo wrap around
+      if (thumbs.length === 0) return;
+      // Clamp defensively — normal ±1 steps never approach these bounds since
+      // stepActivePhoto() below keeps activeIdx within the safe middle-copy buffer.
+      activeIdx = Math.max(0, Math.min(thumbs.length - 1, idx));
       var th = thumbs[activeIdx];
       selectThumb(th);
-      updateDynamicLayout();
+      updateDynamicLayout(true);
       centerThumb(activeIdx, true);
+    }
+
+    /* ── Step by one photo (used by wheel/keys) — loops forever ──────── */
+    function stepActivePhoto(delta) {
+      if (thumbs.length === 0) return;
+      // If the last step drifted into an outer copy, silently fold back into the
+      // safe middle-copy buffer *before* animating the next step — instantly, and
+      // reflow-flushed, so it never renders (the outer/middle copies are pixel
+      // identical) — then animate normally from there. Checking on every step
+      // (rather than waiting for a transition to finish) keeps this correct even
+      // when the user scrolls faster than the 0.45s transition.
+      if (photoCount > 0 && (activeIdx >= 2 * photoCount || activeIdx < photoCount)) {
+        activeIdx += (activeIdx >= 2 * photoCount) ? -photoCount : photoCount;
+        centerThumb(activeIdx, false);
+        updateDynamicLayout(false);
+        void track.offsetHeight; // force reflow so the untransitioned jump commits first
+      }
+      setActivePhoto(activeIdx + delta);
     }
 
     /* ── Init: center active thumb on load & set initial dynamic layout ── */
     function init() {
-      updateDynamicLayout();
+      updateDynamicLayout(false);
       centerThumb(activeIdx, false);
       markActive(thumbs[activeIdx]);
     }
@@ -445,19 +472,19 @@
       lastWheelTime = now;
 
       if (e.deltaY > 0) {
-        setActivePhoto(activeIdx + 1);
+        stepActivePhoto(1);
       } else if (e.deltaY < 0) {
-        setActivePhoto(activeIdx - 1);
+        stepActivePhoto(-1);
       }
     }, { passive: true });
 
     /* ── Keyboard: arrow keys navigate photos (Infinite Circular Loop) ──── */
     document.addEventListener('keydown', function (e) {
       if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
-        setActivePhoto(activeIdx - 1);
+        stepActivePhoto(-1);
       }
       if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
-        setActivePhoto(activeIdx + 1);
+        stepActivePhoto(1);
       }
     });
 
