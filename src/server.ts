@@ -51,12 +51,7 @@ app.use(
 app.use("/", siteRouter);
 app.use("/admin", adminRouter);
 
-app.listen(PORT, () => {
-    console.log(
-        `Of Wild & Walls running at http://localhost:${PORT}/`
-    );
-
-    console.log(
-        `Admin panel at http://localhost:${PORT}/admin/photos`
-    );
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Of Wild & Walls running on port ${PORT}`);
+    console.log(`Admin panel available at /admin/photos`);
 });

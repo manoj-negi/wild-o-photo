@@ -214,7 +214,7 @@
   function setupMenu(menuId, btnId, apiUrl, dataKey, renderFn, filterType) {
     var menuEl = document.getElementById(menuId);
     var btnEl  = document.getElementById(btnId);
-    if (!menuEl) return;
+    if (!menuEl || !btnEl) return;
     menuEl.classList.add('oww-dropdown');
     wirePopup(menuEl, btnEl, filterType);
     wireFilterItems(menuEl, filterType);
