@@ -10,11 +10,12 @@
             <div id="railTrack"
               class="flex flex-col gap-[6px] transition-transform duration-500 ease-[cubic-bezier(.2,.7,.2,1)] py-1">
               <% var railLayout=[ [10, 80, 82], [10, 80, 82], [10, 80, 82], [10, 80, 82], [30, 80, 82], [48, 80, 82], [30,
-                80, 82], [10, 80, 82], [10, 80, 82] ]; photos.forEach(function (p, i) { var lay=railLayout[i %
+                80, 82], [10, 80, 82], [10, 80, 82] ]; var qs=(typeof filterQuery !=='undefined' && filterQuery) ? '?' +
+                filterQuery : ''; photos.forEach(function (p, i) { var lay=railLayout[i %
                 railLayout.length]; var isActive=(p.slug===photo.slug); var dData=p.details || details || {}; %>
-                <a href="/photo/<%= p.slug %>"
+                <a href="/photo/<%= p.slug %><%= qs %>"
                   class="rail-thumb rail-in group block shrink-0 overflow-hidden transition-all duration-300 relative rounded-sm"
-                  data-src="<%= p.src %>" data-alt="<%= p.alt %>" data-href="/photo/<%= p.slug %>"
+                  data-src="<%= p.src %>" data-alt="<%= p.alt %>" data-href="/photo/<%= p.slug %><%= qs %>"
                   data-title="<%= dData.title || p.title || '' %>" data-kicker="<%= dData.kicker || 'LANDSCAPE' %>"
                   data-ref="<%= dData.ref || 'REF: WILD-' + (i + 101) %>" data-about="<%= dData.about || '' %>"
                   data-altnote="<%= dData.altNote || '' %>" data-collection="<%= dData.collection || '' %>"

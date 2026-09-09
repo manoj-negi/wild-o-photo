@@ -145,6 +145,27 @@
     applyFilters();
   }
 
+  /** Build a query string (e.g. "category=Birds&camera=SONY%20A7IV") from the active filters */
+  function buildFilterQueryString() {
+    var parts = [];
+    Object.keys(activeFilters).forEach(function (type) {
+      var val = activeFilters[type];
+      if (val) parts.push(encodeURIComponent(type) + '=' + encodeURIComponent(val));
+    });
+    return parts.join('&');
+  }
+
+  /** When navigating into a photo from a filtered grid/flow view, carry the active
+   *  filters along in the URL so /photo/:slug only shows the filtered photo set. */
+  document.addEventListener('click', function (e) {
+    var link = e.target.closest('.photo-item');
+    if (!link) return;
+    var qs = buildFilterQueryString();
+    if (!qs) return;
+    var base = (link.getAttribute('href') || '').split('?')[0];
+    link.setAttribute('href', base + '?' + qs);
+  }, true);
+
   function updateButtonLabel(type) {
     var btnId = type === 'collection' ? 'collectionsBtn' : type + 'Btn';
     var btn = document.getElementById(btnId);

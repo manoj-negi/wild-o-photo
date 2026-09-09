@@ -253,12 +253,43 @@ const getPhotoDetail = async (req: Request, res: Response) => {
     );
     if (rows.length === 0) return res.status(404).send("Photo not found");
 
-    const [allPhotoRows] = await pool.query<any[]>(
+    // Filters carried over from the flow/grid view (category, collection, camera, lens —
+    // matched against the same display names used by the client-side filter menus), so the
+    // detail page's photo rail only contains the photos the visitor was browsing.
+    const filterCategory = String(req.query.category || "").trim().toLowerCase();
+    const filterCollection = String(req.query.collection || "").trim().toLowerCase();
+    const filterCamera = String(req.query.camera || "").trim().toLowerCase();
+    const filterLens = String(req.query.lens || "").trim().toLowerCase();
+    const hasFilters = !!(filterCategory || filterCollection || filterCamera || filterLens);
+
+    const [allPhotoRowsRaw] = await pool.query<any[]>(
       `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC`
     );
     const [camRows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
     );
+
+    const rowMatchesFilters = (r: any): boolean => {
+      if (filterCategory && (r.cat_name || "").trim().toLowerCase() !== filterCategory) return false;
+      if (filterCollection && (r.col_name || "").trim().toLowerCase() !== filterCollection) return false;
+      if (filterCamera && formatCameraName(r.cam_brand, r.cam_model, "").trim().toLowerCase() !== filterCamera) return false;
+      if (filterLens && formatLensName(r.len_brand, r.len_model, "").trim().toLowerCase() !== filterLens) return false;
+      return true;
+    };
+
+    let allPhotoRows = hasFilters ? allPhotoRowsRaw.filter(rowMatchesFilters) : allPhotoRowsRaw;
+    // Always keep the currently open photo in the rail, even if it no longer matches
+    // (e.g. a stale/shared filtered link) so the page never renders with an empty rail.
+    if (!allPhotoRows.some(r => r.slug === rows[0].slug)) {
+      allPhotoRows = [rows[0], ...allPhotoRows];
+    }
+
+    const filterQuery = [
+      filterCategory ? `category=${encodeURIComponent(req.query.category as string)}` : "",
+      filterCollection ? `collection=${encodeURIComponent(req.query.collection as string)}` : "",
+      filterCamera ? `camera=${encodeURIComponent(req.query.camera as string)}` : "",
+      filterLens ? `lens=${encodeURIComponent(req.query.lens as string)}` : "",
+    ].filter(Boolean).join("&");
 
     const buildDetailsFromJoined = (r: any) => {
       const m = parseMeta(r.metadata);
@@ -310,6 +341,7 @@ const getPhotoDetail = async (req: Request, res: Response) => {
       photos,
       cameras,
       details,
+      filterQuery,
     });
   } catch (err) {
     console.error("Error rendering detail page:", err);
