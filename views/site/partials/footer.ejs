@@ -24,7 +24,7 @@
 
       <%# ── Camera dropdown ────────────────────────────────────────── %>
       <div class="relative">
-        <div id="cameraMenu" class="absolute bottom-[calc(100%+24px)] left-1/2 -translate-x-1/2 w-[218px] py-2 rounded-[14px] bg-[#f1f0ef] dark:bg-[#262626] shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.6)]<%= cameraOpen ? '' : ' hidden' %>" aria-label="Camera filter menu">
+        <div id="cameraMenu" class="absolute bottom-[calc(100%+24px)] left-1/2 -translate-x-1/2 w-[218px] py-2 rounded-[14px] bg-[#f1f0ef] dark:bg-[#262626] shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.6)]<%= (typeof cameraOpen !== 'undefined' && cameraOpen) ? '' : ' hidden' %>" aria-label="Camera filter menu">
           <p class="px-4 py-2 text-[13px] text-ink/35 dark:text-white/35 italic menu-loading">Loading…</p>
         </div>
         <button type="button" id="cameraBtn" data-filter="camera" class="flex items-center gap-2 px-4 py-2.5 rounded-[18px] text-[15px] text-ink/75 dark:text-white/75 hover:bg-black/[0.04] dark:hover:bg-white/[0.07] transition-colors">
@@ -44,6 +44,6 @@
 
     </div>
   </nav>
-  <script src="/js/app.js"></script>
+  <script src="/site/js/app.js"></script>
 </body>
 </html>
