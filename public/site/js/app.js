@@ -557,4 +557,49 @@
     e.preventDefault();
     strip.scrollLeft += e.deltaY;
   }, { passive: false });
+
+  /* ── Grid view — infinite horizontal scroll ────────────────────────
+   * The track is rendered three times in a row (see grid.ejs). We start
+   * scrolled to the beginning of the middle copy; whenever native scrolling
+   * hits the strip's hard left/right edge, we silently jump scrollLeft by
+   * exactly one copy's width — since the copies are pixel-identical, the
+   * jump is invisible and the strip appears to scroll forever either way. */
+  (function () {
+    var track = document.getElementById('gridTrack');
+    if (!strip || !track) return;
+
+    // Fractional/subpixel widths (vw-based gaps & padding, high-DPI rounding) mean
+    // strip.scrollWidth - strip.clientWidth is rarely an exact integer match for
+    // strip.scrollLeft at the true right edge — a 1px tolerance missed it there
+    // often enough that the right side never looped, while the left edge (an exact
+    // 0) always worked. A few px of slack fixes both edges symmetrically.
+    var EDGE_TOLERANCE = 4;
+
+    var copyWidth = 0;
+
+    function measure() {
+      copyWidth = strip.scrollWidth / 3;
+    }
+
+    function goToStart() {
+      measure();
+      if (copyWidth > 0) strip.scrollLeft = copyWidth;
+    }
+
+    strip.addEventListener('scroll', function () {
+      if (copyWidth <= 0) return;
+      var maxScrollLeft = strip.scrollWidth - strip.clientWidth;
+      if (strip.scrollLeft <= EDGE_TOLERANCE) {
+        strip.scrollLeft += copyWidth;
+      } else if (strip.scrollLeft >= maxScrollLeft - EDGE_TOLERANCE) {
+        strip.scrollLeft -= copyWidth;
+      }
+    });
+
+    // Recompute once images have settled their natural size, and again on resize
+    // (copy width depends on each photo's rendered aspect ratio).
+    window.addEventListener('load', goToStart);
+    window.addEventListener('resize', measure);
+    requestAnimationFrame(function () { setTimeout(goToStart, 60); });
+  })();
 })();

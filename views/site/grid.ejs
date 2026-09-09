@@ -3,8 +3,14 @@
 <%- include('partials/header', { view: 'grid' }) %>
   <main class="h-screen flex items-center justify-center overflow-hidden py-12">
     <div id="gridStrip" class="w-full overflow-x-auto no-bar flex justify-center">
-      <div class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max">
-        <% photos.forEach(function (p) { %>
+      <div id="gridTrack" class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max">
+        <%
+          // Infinite horizontal scroll: the strip is rendered three times in a row so
+          // scrolling past either end always has more (duplicate) content to scroll into.
+          // app.js watches for the native scroll hitting either hard edge and silently
+          // jumps back one copy's width, so the strip never runs out of photos to scroll.
+          for (var gridCopy = 0; gridCopy < 3; gridCopy++) {
+            photos.forEach(function (p) { %>
           <a href="/photo/<%= p.slug %>" class="photo-item group relative shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)]"
              data-category="<%= p.category %>"
              data-collection="<%= p.collection %>"
@@ -22,7 +28,8 @@
           <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
           <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
           </a>
-        <% }); %>
+        <%  });
+          } %>
       </div>
     </div>
   </main>
