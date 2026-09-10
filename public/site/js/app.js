@@ -106,7 +106,7 @@
     collection: 'Collections',
     camera:     'Camera',
     lens:       'Lens',
-    country:    'Country',
+    country:    'Location',
     year:       'Year'
   };
 
@@ -116,12 +116,24 @@
       var visible = true;
       Object.keys(activeFilters).forEach(function (type) {
         var val = activeFilters[type];
-        if (!val) return; // no filter active for this type
-        var photoVal = (el.getAttribute('data-' + dataAttrMap[type]) || '').trim().toLowerCase();
-        if (photoVal !== val.toLowerCase()) visible = false;
+        if (!val) return;
+        if (type === 'country') {
+          // val can be "country::India" (whole country) or "state::Tokyo" (specific state)
+          var prefix = val.slice(0, val.indexOf('::'));
+          var slug   = val.slice(val.indexOf('::') + 2).toLowerCase();
+          if (prefix === 'country') {
+            var photoCountry = (el.getAttribute('data-country') || '').trim().toLowerCase();
+            if (photoCountry !== slug) visible = false;
+          } else {
+            // prefix === 'state'
+            var photoState = (el.getAttribute('data-state') || '').trim().toLowerCase();
+            if (photoState !== slug) visible = false;
+          }
+        } else {
+          var photoVal = (el.getAttribute('data-' + dataAttrMap[type]) || '').trim().toLowerCase();
+          if (photoVal !== val.toLowerCase()) visible = false;
+        }
       });
-      // For flow (absolute positioned), toggle visibility + pointer events
-      // For grid (flex item), toggle display
       if (el.style.position === 'absolute' || el.classList.contains('absolute')) {
         el.style.opacity    = visible ? '' : '0';
         el.style.pointerEvents = visible ? '' : 'none';
@@ -270,11 +282,184 @@
   // Lens — grouped by brand
   setupMenu('lensMenu', 'lensBtn', '/api/lenses', 'lenses', buildGroupedHTML, 'lens');
 
-  // Country — grouped by country, each state with a live-photo count
-  setupMenu('countryMenu', 'countryBtn', '/api/countries', 'countries', function (items) {
-    var groups = (items || []).map(function (c) { return { brand: c.country, models: c.states }; });
-    return buildGroupedHTML(groups);
-  }, 'country');
+  // Location (Country/State) — hierarchical picker with search, radio buttons, expand/collapse
+  (function () {
+    var menuEl = document.getElementById('countryMenu');
+    var btnEl  = document.getElementById('countryBtn');
+    if (!menuEl || !btnEl) return;
+    menuEl.classList.add('oww-dropdown');
+
+    var locationData  = [];   // [{ country, totalCount, states: [{ name, count }] }]
+    var expandedSet   = {};   // countryName -> bool
+    var searchVal     = '';
+
+    /* ── Build inner HTML from current locationData + search ── */
+    function buildLocationHTML() {
+      var filtered = locationData.filter(function (c) {
+        if (!searchVal) return true;
+        var q = searchVal.toLowerCase();
+        if (c.country.toLowerCase().includes(q)) return true;
+        return c.states.some(function (s) { return s.name.toLowerCase().includes(q); });
+      });
+
+      if (filtered.length === 0) {
+        return '<p class="px-4 py-3 text-[13px] text-ink/40 dark:text-white/40 italic">No results</p>';
+      }
+
+      return filtered.map(function (c) {
+        var isExpanded = !!expandedSet[c.country] || (searchVal.length > 0);
+        var activeVal  = activeFilters.country;
+        var isCountryActive = activeVal === 'country::' + c.country;
+        var hasStates  = c.states.length > 0;
+
+        var radioHtml = '<label class="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer">' +
+          '<input type="radio" name="oww-loc" class="sr-only oww-loc-radio" data-kind="country" data-value="' + escAttr(c.country) + '">' +
+          '<span class="w-3.5 h-3.5 rounded-full border border-ink/30 dark:border-white/30 flex items-center justify-center' +
+          (isCountryActive ? ' border-ink dark:border-white bg-ink dark:bg-white' : '') + '">' +
+          (isCountryActive ? '<span class="w-1.5 h-1.5 rounded-full bg-paper dark:bg-ink"></span>' : '') + '</span></label>';
+
+        var arrowHtml = hasStates
+          ? '<button type="button" class="oww-loc-expand ml-auto flex items-center justify-center w-6 h-6 rounded text-ink/40 dark:text-white/40 hover:text-ink dark:hover:text-white transition-colors" data-country="' + escAttr(c.country) + '">' +
+            '<svg viewBox="0 0 16 16" class="w-3 h-3 transition-transform' + (isExpanded ? ' rotate-180' : '') + '" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>' +
+            '</button>'
+          : '<span class="w-6 ml-auto"></span>';
+
+        var html = '<div class="flex items-center gap-2 px-3 py-2 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] rounded-lg cursor-pointer oww-loc-row" data-kind="country" data-value="' + escAttr(c.country) + '">' +
+          radioHtml +
+          '<span class="flex-1 text-[14px] text-ink dark:text-white">' + esc(c.country) + '</span>' +
+          '<span class="text-[12px] text-ink/35 dark:text-white/35 mr-1">' + c.totalCount + '</span>' +
+          arrowHtml +
+          '</div>';
+
+        if (isExpanded && hasStates) {
+          html += c.states.map(function (s) {
+            var isStateActive = activeVal === 'state::' + s.name;
+            var stateRadio = '<label class="flex items-center justify-center w-4 h-4 shrink-0 cursor-pointer">' +
+              '<input type="radio" name="oww-loc" class="sr-only oww-loc-radio" data-kind="state" data-value="' + escAttr(s.name) + '">' +
+              '<span class="w-3 h-3 rounded-full border border-ink/25 dark:border-white/25 flex items-center justify-center' +
+              (isStateActive ? ' border-ink dark:border-white bg-ink dark:bg-white' : '') + '">' +
+              (isStateActive ? '<span class="w-1.5 h-1.5 rounded-full bg-paper dark:bg-ink"></span>' : '') + '</span></label>';
+
+            return '<div class="flex items-center gap-2 pl-9 pr-3 py-1.5 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] rounded-lg cursor-pointer oww-loc-row" data-kind="state" data-value="' + escAttr(s.name) + '">' +
+              stateRadio +
+              '<span class="flex-1 text-[13px] text-ink/80 dark:text-white/80">' + esc(s.name) + '</span>' +
+              '<span class="text-[12px] text-ink/30 dark:text-white/30">' + s.count + '</span>' +
+              '</div>';
+          }).join('');
+        }
+
+        return html;
+      }).join('');
+    }
+
+    /* ── Re-render the list part of the menu ── */
+    function rerender() {
+      var listEl = menuEl.querySelector('#oww-loc-list');
+      if (listEl) listEl.innerHTML = buildLocationHTML();
+    }
+
+    /* ── Fetch data and build the full menu shell ── */
+    fetch('/api/countries')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        locationData = (data.countries || []).map(function (c) {
+          var total = c.states.reduce(function (a, s) { return a + (s.count || 0); }, 0);
+          return { country: c.country, totalCount: total, states: c.states };
+        });
+
+        menuEl.innerHTML =
+          '<div class="flex items-center justify-between px-3 pt-2 pb-1">' +
+            '<span class="text-[10px] tracking-[0.12em] uppercase font-semibold text-ink/40 dark:text-white/40">Location</span>' +
+            '<button type="button" id="oww-loc-clear" class="text-[12px] text-ink/50 dark:text-white/50 hover:text-ink dark:hover:text-white transition-colors">Clear</button>' +
+          '</div>' +
+          '<div class="px-3 pb-2">' +
+            '<input id="oww-loc-search" type="text" placeholder="Search countries or cities…" autocomplete="off"' +
+            ' class="w-full rounded-lg border border-ink/10 dark:border-white/10 bg-ink/[0.03] dark:bg-white/[0.05] px-3 py-1.5 text-[13px] text-ink dark:text-white placeholder:text-ink/30 dark:placeholder:text-white/30 outline-none focus:border-ink/30 dark:focus:border-white/30 transition-colors">' +
+          '</div>' +
+          '<p class="px-3 pb-1 text-[10px] tracking-[0.1em] uppercase font-semibold text-ink/35 dark:text-white/35">Countries</p>' +
+          '<div id="oww-loc-list" class="max-h-[260px] overflow-y-auto px-1 pb-1">' + buildLocationHTML() + '</div>' +
+          '<p class="px-3 py-2 text-[11px] text-ink/35 dark:text-white/35 border-t border-ink/8 dark:border-white/8 mt-1">Select a country for all its photographs, or expand it to choose a city.</p>';
+
+        /* Search */
+        var searchInput = menuEl.querySelector('#oww-loc-search');
+        if (searchInput) {
+          searchInput.addEventListener('input', function () {
+            searchVal = this.value.trim();
+            rerender();
+          });
+          searchInput.addEventListener('click', function (e) { e.stopPropagation(); });
+        }
+
+        /* Clear */
+        var clearBtn = menuEl.querySelector('#oww-loc-clear');
+        if (clearBtn) {
+          clearBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            activeFilters.country = null;
+            updateButtonLabel('country');
+            applyFilters();
+            menuEl.classList.add('hidden');
+          });
+        }
+
+        /* Row clicks — country or state selection */
+        menuEl.addEventListener('click', function (e) {
+          var expand = e.target.closest('.oww-loc-expand');
+          if (expand) {
+            e.stopPropagation();
+            var c = expand.getAttribute('data-country');
+            expandedSet[c] = !expandedSet[c];
+            rerender();
+            return;
+          }
+          var row = e.target.closest('.oww-loc-row');
+          if (!row) return;
+          e.stopPropagation();
+          var kind = row.getAttribute('data-kind');
+          var val  = row.getAttribute('data-value');
+          if (kind === 'country') {
+            // Toggle expand AND select country
+            expandedSet[val] = !expandedSet[val];
+            var newFilter = activeFilters.country === 'country::' + val ? null : 'country::' + val;
+            activeFilters.country = newFilter;
+          } else {
+            var newFilter = activeFilters.country === 'state::' + val ? null : 'state::' + val;
+            activeFilters.country = newFilter;
+          }
+          updateButtonLabel('country');
+          applyFilters();
+          rerender();
+          if (activeFilters.country) menuEl.classList.add('hidden');
+        });
+      })
+      .catch(function () {
+        menuEl.innerHTML = '<p class="px-4 py-2 text-[13px] text-red-400 italic">Failed to load</p>';
+      });
+
+    /* ── Popup toggle ── */
+    btnEl.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (activeFilters.country) {
+        activeFilters.country = null;
+        updateButtonLabel('country');
+        applyFilters();
+        document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
+        return;
+      }
+      var isHidden = menuEl.classList.contains('hidden');
+      document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
+      menuEl.classList.toggle('hidden', !isHidden);
+      if (!menuEl.classList.contains('hidden')) {
+        var si = menuEl.querySelector('#oww-loc-search');
+        if (si) setTimeout(function () { si.focus(); }, 50);
+      }
+    });
+    menuEl.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { menuEl.classList.add('hidden'); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
+    });
+  })();
 
   // Year — flat list, most recent first (order returned by the API)
   setupMenu('yearMenu', 'yearBtn', '/api/years', 'years', function (items) {
