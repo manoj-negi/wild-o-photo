@@ -80,6 +80,17 @@
                 <label class="label">Date <span class="text-red-500">*</span>
                   <input class="field mt-1.5" type="date" name="date" value="<%= photo.date %>" required>
                 </label>
+                <label class="label">Country <span class="text-red-500">*</span>
+                  <select id="country-select" class="field mt-1.5" required>
+                    <option value="">Select country</option>
+                  </select>
+                </label>
+                <label class="label">State / Region <span class="text-red-500">*</span>
+                  <select id="state-select" name="country_id" class="field mt-1.5" required>
+                    <option value="">Select state</option>
+                  </select>
+                  <input type="hidden" id="state-hidden" name="state" value="<%= photo.state || '' %>">
+                </label>
                 <label class="label">Location <span class="text-red-500">*</span>
                   <input class="field mt-1.5" name="location" value="<%= photo.location || '' %>" placeholder="Spiti, Himachal Pradesh" required>
                 </label>
@@ -174,6 +185,60 @@
         handleFile(files[0]);
       }
     });
+  })();
+</script>
+
+<script>
+  (function() {
+    const countries = <%- JSON.stringify(typeof countries !== "undefined" ? countries : []) %>;
+    const selectedCountryId = <%- photo.country_id ? Number(photo.country_id) : "null" %>;
+    const countrySelect = document.getElementById('country-select');
+    const stateSelect = document.getElementById('state-select');
+    const stateHidden = document.getElementById('state-hidden');
+
+    if (!countrySelect || !stateSelect || !stateHidden) return;
+
+    function syncStateHidden() {
+      const opt = stateSelect.options[stateSelect.selectedIndex];
+      stateHidden.value = (opt && opt.value) ? opt.textContent : '';
+    }
+
+    const names = [...new Set(countries.map(c => c.country))].sort();
+    names.forEach(function(name) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      countrySelect.appendChild(opt);
+    });
+
+    function populateStates(countryName, preselectId) {
+      stateSelect.innerHTML = '<option value="">Select state</option>';
+      countries
+        .filter(c => c.country === countryName)
+        .forEach(function(c) {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = c.state;
+          if (preselectId && Number(preselectId) === Number(c.id)) opt.selected = true;
+          stateSelect.appendChild(opt);
+        });
+    }
+
+    countrySelect.addEventListener('change', function() {
+      populateStates(countrySelect.value, null);
+      syncStateHidden();
+    });
+
+    stateSelect.addEventListener('change', syncStateHidden);
+
+    if (selectedCountryId) {
+      const match = countries.find(c => Number(c.id) === selectedCountryId);
+      if (match) {
+        countrySelect.value = match.country;
+        populateStates(match.country, selectedCountryId);
+        syncStateHidden();
+      }
+    }
   })();
 </script>
 

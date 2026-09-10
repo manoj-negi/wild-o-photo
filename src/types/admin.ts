@@ -14,6 +14,8 @@ export interface AdminPhoto {
   collection_id?: number | null;
   camera_id?: number | null;
   lens_id?: number | null;
+  country_id?: number | null;
+  state?: string;
   category: string;
   collection: string;
   camera: string;

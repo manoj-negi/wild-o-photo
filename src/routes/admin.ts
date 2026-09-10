@@ -4,6 +4,7 @@ import authController from "../controllers/authController";
 import categoryController from "../controllers/categoryController";
 import collectionController from "../controllers/collectionController";
 import cameraController from "../controllers/cameraController";
+import countryController from "../controllers/countryController";
 import lensController from "../controllers/lensController";
 import photoController from "../controllers/photoController";
 import authenticate from "../middleware/authenticate";
@@ -21,7 +22,7 @@ router.get("/signup", (req, res) => {
 });
 
 router.get("/", (req, res) => {
-  res.render("signup");
+  res.redirect("/admin/login");
 });
 
 router.post("/submit-form", authController.signup);
@@ -60,6 +61,13 @@ router.post("/cameras", authenticate, cameraController.createCamera);
 router.post("/cameras/:index", authenticate, cameraController.updateCamera);
 router.post("/cameras/:index/delete", authenticate, cameraController.deleteCamera);
 
+// ---- Countries --------------------------------------------------------------
+
+router.get("/countries", authenticate, countryController.getCountries);
+router.post("/countries", authenticate, countryController.createCountry);
+router.post("/countries/:index", authenticate, countryController.updateCountry);
+router.post("/countries/:index/delete", authenticate, countryController.deleteCountry);
+
 // ---- Lenses ----------------------------------------------------------------
 
 router.get("/lenses", authenticate, lensController.getLenses);
@@ -83,6 +91,10 @@ router.get("/api/collections", collectionController.getCollectionsAPI);
 // ---- Camera APIs ----------------------------------------------------------
 
 router.get("/api/cameras", cameraController.getCamerasAPI);
+
+// ---- Country APIs -----------------------------------------------------------
+
+router.get("/api/countries", countryController.getCountriesAPI);
 
 // ---- Lens APIs ------------------------------------------------------------
 

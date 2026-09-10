@@ -18,6 +18,8 @@ interface DBPhotoRow extends RowDataPacket {
   collection_id?: number | null;
   camera_id?: number | null;
   lens_id?: number | null;
+  country_id?: number | null;
+  state?: string;
   category?: string;
   collection?: string;
   camera?: string;
@@ -52,7 +54,7 @@ const readMeta = (body: Request["body"]): MetaItem[] => {
 
 const blankPhoto = (): AdminPhoto => ({
   cap: "", slug: "", title: "", ref: "", category: "", collection: "", camera: "",
-  category_id: null, collection_id: null, camera_id: null, lens_id: null,
+  category_id: null, collection_id: null, camera_id: null, lens_id: null, country_id: null, state: "",
   date: "", about: "", altNote: "", src: "", alt: "",
   l: "", t: "", w: "", h: "", live: true, views: ["Flow", "Grid"],
   meta: []
@@ -107,6 +109,8 @@ const mapDBPhotoToAdminPhoto = (row: DBPhotoRow, collectionDescriptions: Record<
     collection_id: row.collection_id || null,
     camera_id: row.camera_id || null,
     lens_id: row.lens_id || null,
+    country_id: row.country_id || null,
+    state: row.state || "",
     category: row.category || "",
     collection: collectionName,
     aboutCollection: aboutCollection,
@@ -216,6 +220,7 @@ const getNewPhotoForm = async (req: Request, res: Response) => {
     const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM collections ORDER BY id ASC");
     const [camRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM cameras ORDER BY id ASC");
     const [lensRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM lenses ORDER BY id ASC");
+    const [countryRows] = await pool.query<RowDataPacket[]>("SELECT id, country, state FROM countries ORDER BY country ASC, state ASC");
 
     res.render("photo-form", {
       nav: "add",
@@ -224,7 +229,8 @@ const getNewPhotoForm = async (req: Request, res: Response) => {
       categories: catRows,
       collections: collRows,
       cameras: camRows,
-      lenses: lensRows
+      lenses: lensRows,
+      countries: countryRows
     });
   } catch (error) {
     console.error("Error rendering add photo form:", error);
@@ -243,6 +249,7 @@ const getEditPhotoForm = async (req: Request, res: Response) => {
     const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title, description FROM collections ORDER BY id ASC");
     const [camRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM cameras ORDER BY id ASC");
     const [lensRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM lenses ORDER BY id ASC");
+    const [countryRows] = await pool.query<RowDataPacket[]>("SELECT id, country, state FROM countries ORDER BY country ASC, state ASC");
 
     const collectionMap: Record<string, string> = {};
     collRows.forEach(c => { collectionMap[c.title] = c.description || ""; });
@@ -256,7 +263,8 @@ const getEditPhotoForm = async (req: Request, res: Response) => {
       categories: catRows,
       collections: collRows,
       cameras: camRows,
-      lenses: lensRows
+      lenses: lensRows,
+      countries: countryRows
     });
   } catch (error) {
     console.error("Error rendering edit photo form:", error);
@@ -295,6 +303,8 @@ const createPhoto = async (req: Request, res: Response) => {
     const collection_id = req.body.collection_id ? parseInt(req.body.collection_id, 10) : null;
     const camera_id = req.body.camera_id ? parseInt(req.body.camera_id, 10) : null;
     const lens_id = req.body.lens_id ? parseInt(req.body.lens_id, 10) : null;
+    const country_id = req.body.country_id ? parseInt(req.body.country_id, 10) : null;
+    const state = (req.body.state || "").trim();
     const date = (req.body.date || "").trim();
     const about = (req.body.about || "").trim();
     const altNote = (req.body.altNote || "").trim();
@@ -312,9 +322,9 @@ const createPhoto = async (req: Request, res: Response) => {
 
     await pool.query(
       `INSERT INTO photos (
-        title, cap, slug, ref, url, s3_key, alt, category_id, collection_id, camera_id, lens_id, date, description, l, t, w, h, live, metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [title, cap, slug, ref, photoUrl, s3Key, alt, category_id, collection_id, camera_id, lens_id, date, about, l, t, w, h, live, metadata]
+        title, cap, slug, ref, url, s3_key, alt, category_id, collection_id, camera_id, lens_id, country_id, state, date, description, l, t, w, h, live, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [title, cap, slug, ref, photoUrl, s3Key, alt, category_id, collection_id, camera_id, lens_id, country_id, state, date, about, l, t, w, h, live, metadata]
     );
 
     res.redirect("/admin/photos?flash=Photo+added");
@@ -362,6 +372,8 @@ const updatePhoto = async (req: Request, res: Response) => {
     const collection_id = req.body.collection_id ? parseInt(req.body.collection_id, 10) : null;
     const camera_id = req.body.camera_id ? parseInt(req.body.camera_id, 10) : null;
     const lens_id = req.body.lens_id ? parseInt(req.body.lens_id, 10) : null;
+    const country_id = req.body.country_id ? parseInt(req.body.country_id, 10) : null;
+    const state = (req.body.state || "").trim();
     const date = (req.body.date || "").trim();
     const about = (req.body.about || "").trim();
     const altNote = (req.body.altNote || "").trim();
@@ -375,9 +387,9 @@ const updatePhoto = async (req: Request, res: Response) => {
 
     await pool.query(
       `UPDATE photos SET
-        title = ?, cap = ?, slug = ?, ref = ?, url = ?, s3_key = ?, alt = ?, category_id = ?, collection_id = ?, camera_id = ?, lens_id = ?, date = ?, description = ?, l = ?, t = ?, w = ?, h = ?, live = ?, metadata = ?
+        title = ?, cap = ?, slug = ?, ref = ?, url = ?, s3_key = ?, alt = ?, category_id = ?, collection_id = ?, camera_id = ?, lens_id = ?, country_id = ?, state = ?, date = ?, description = ?, l = ?, t = ?, w = ?, h = ?, live = ?, metadata = ?
       WHERE slug = ?`,
-      [title, cap, slug, ref, photoUrl, s3Key, alt, category_id, collection_id, camera_id, lens_id, date, about, l, t, w, h, live, metadata, targetSlug]
+      [title, cap, slug, ref, photoUrl, s3Key, alt, category_id, collection_id, camera_id, lens_id, country_id, state, date, about, l, t, w, h, live, metadata, targetSlug]
     );
 
     res.redirect("/admin/photos?flash=Photo+saved");
