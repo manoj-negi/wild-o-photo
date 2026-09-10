@@ -189,6 +189,10 @@ const formatLensName = (brand?: string, model?: string, fallback?: string): stri
 // /api/photos/flow page as the visitor scrolls near the bottom of the canvas.
 const FLOW_PAGE_SIZE = 30;
 
+// Number of photos rendered on the grid view's first load, and fetched per
+// /api/photos/grid page as the visitor scrolls near either end of the strip.
+const GRID_PAGE_SIZE = 30;
+
 // ── Rendered page handlers ───────────────────────────────────────────────────
 
 /** GET / — flow view */
@@ -239,10 +243,15 @@ const getFlow = async (req: Request, res: Response) => {
 /** GET /grid — grid view */
 const getGrid = async (req: Request, res: Response) => {
   try {
+    const [[{ total }]] = await pool.query<any[]>(
+      "SELECT COUNT(*) AS total FROM photos p WHERE p.live = 1"
+    );
     const [photoRows] = await pool.query<any[]>(
       `${SELECT_SITE_PHOTOS}
        WHERE p.live = 1
-       ORDER BY p.id DESC`
+       ORDER BY p.id DESC
+       LIMIT ?`,
+      [GRID_PAGE_SIZE]
     );
     const [camRows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
@@ -260,8 +269,16 @@ const getGrid = async (req: Request, res: Response) => {
 
     const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
     const cameras = buildCameraMenu(camRows, photoCameras);
+    const hasMore = photos.length < total;
 
-    res.render("grid", { title: "Of Wild & Walls", photos, cameras });
+    res.render("grid", {
+      title: "Of Wild & Walls",
+      photos,
+      cameras,
+      hasMore,
+      nextOffset: photos.length,
+      pageSize: GRID_PAGE_SIZE,
+    });
   } catch (err) {
     console.error("Error rendering grid page:", err);
     res.status(500).send("Error loading page");
@@ -417,11 +434,23 @@ const getFlowAPI = async (req: Request, res: Response) => {
   }
 };
 
-/** GET /api/photos/grid — live photos tagged for the Grid view */
+/** GET /api/photos/grid — live photos tagged for the Grid view (paginated: ?offset=&limit=) */
 const getGridAPI = async (req: Request, res: Response) => {
   try {
+    const MAX_LIMIT = 100;
+    let limit = parseInt(String(req.query.limit || ""), 10);
+    if (!Number.isFinite(limit) || limit <= 0) limit = GRID_PAGE_SIZE;
+    limit = Math.min(limit, MAX_LIMIT);
+
+    let offset = parseInt(String(req.query.offset || ""), 10);
+    if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+    const [[{ total }]] = await pool.query<any[]>(
+      "SELECT COUNT(*) AS total FROM photos p WHERE p.live = 1"
+    );
     const [photoRows] = await pool.query<DBPhotoRow[]>(
-      `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC`
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
     );
     const [collRows] = await pool.query<DBCollectionRow[]>(
       "SELECT name, description FROM collections ORDER BY id ASC"
@@ -431,7 +460,10 @@ const getGridAPI = async (req: Request, res: Response) => {
     collRows.forEach(c => { collectionMap[c.name] = c.description || ""; });
 
     const photos = photoRows.map(r => mapToSitePhoto(r, collectionMap));
-    res.json({ success: true, count: photos.length, photos });
+    const nextOffset = offset + photos.length;
+    const hasMore = nextOffset < total;
+
+    res.json({ success: true, count: photos.length, total, offset, nextOffset, hasMore, photos });
   } catch (err) {
     console.error("API error /api/photos/grid:", err);
     res.status(500).json({ success: false, error: "Failed to fetch grid photos" });

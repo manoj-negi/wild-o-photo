@@ -42,9 +42,9 @@
 <main class="pt-[74px]">
   <div id="flowCanvas" class="relative w-full"
        style="height:<%= maxBottom %>vw"
-       data-offset="<%= nextOffset %>"
-       data-page-size="<%= pageSize %>"
-       data-has-more="<%= hasMore ? '1' : '0' %>">
+       data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
+       data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
+       data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>">
     <% positioned.forEach(function (item) {
       var p = item.photo, pos = item.pos;
     %>

@@ -110,7 +110,54 @@
     year:       'Year'
   };
 
+  /** Flow view only: the masonry items are absolutely positioned at fixed vw
+   *  coordinates, so simply hiding the ones a filter excludes (as Grid's flex
+   *  layout can) leaves their reserved space behind — gaps between the
+   *  remaining photos. Re-running the same column-fill algorithm the server
+   *  (and the infinite-scroll loader) use, over just the currently-visible
+   *  items, repacks them with no gaps. Run unconditionally (not just when a
+   *  filter is active) so clearing a filter repacks back to the full set too. */
+  function reflowFlowLayout(canvas, visibleItems) {
+    var COLUMNS = window.__flowColumns || [];
+    var COLUMN_GAP = window.__flowColumnGap || 3;
+    if (!COLUMNS.length) return;
+
+    var columnBottoms = COLUMNS.map(function (c) { return c.top - COLUMN_GAP; });
+    var columnCounts = COLUMNS.map(function () { return 0; });
+
+    function nextAutoPos() {
+      var idx = 0;
+      for (var i = 1; i < columnBottoms.length; i++) {
+        if (columnBottoms[i] < columnBottoms[idx]) idx = i;
+      }
+      var col = COLUMNS[idx];
+      var t = columnBottoms[idx] + COLUMN_GAP;
+      var h = col.shapes[columnCounts[idx] % col.shapes.length];
+      columnCounts[idx]++;
+      columnBottoms[idx] = t + h;
+      return { l: col.l, t: t, w: col.w, h: h };
+    }
+
+    visibleItems.forEach(function (el) {
+      var pos = nextAutoPos();
+      el.style.left = pos.l + 'vw';
+      el.style.top = pos.t + 'vw';
+      el.style.width = pos.w + 'vw';
+      el.style.height = pos.h + 'vw';
+      el.style.opacity = '';
+      el.style.pointerEvents = '';
+      el.style.visibility = '';
+    });
+
+    var maxBottom = (columnBottoms.length ? Math.max.apply(null, columnBottoms) : 0) + 4;
+    canvas.style.height = maxBottom + 'vw';
+    var sentinel = document.getElementById('flowSentinel');
+    if (sentinel) sentinel.style.top = maxBottom + 'vw';
+  }
+
   function applyFilters() {
+    var flowCanvas = document.getElementById('flowCanvas');
+    var visibleFlowItems = [];
     var photos = document.querySelectorAll('.photo-item');
     photos.forEach(function (el) {
       var visible = true;
@@ -134,14 +181,19 @@
           if (photoVal !== val.toLowerCase()) visible = false;
         }
       });
-      if (el.style.position === 'absolute' || el.classList.contains('absolute')) {
-        el.style.opacity    = visible ? '' : '0';
-        el.style.pointerEvents = visible ? '' : 'none';
-        el.style.visibility = visible ? '' : 'hidden';
+      if (flowCanvas && el.parentNode === flowCanvas) {
+        if (visible) {
+          visibleFlowItems.push(el);
+        } else {
+          el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
+          el.style.visibility = 'hidden';
+        }
       } else {
         el.style.display = visible ? '' : 'none';
       }
     });
+    if (flowCanvas) reflowFlowLayout(flowCanvas, visibleFlowItems);
   }
 
   function setFilter(type, value) {
@@ -758,15 +810,24 @@
     strip.scrollLeft += e.deltaY;
   }, { passive: false });
 
-  /* ── Grid view — infinite horizontal scroll ────────────────────────
-   * The track is rendered three times in a row (see grid.ejs). We start
-   * scrolled to the beginning of the middle copy; whenever native scrolling
-   * hits the strip's hard left/right edge, we silently jump scrollLeft by
-   * exactly one copy's width — since the copies are pixel-identical, the
-   * jump is invisible and the strip appears to scroll forever either way. */
+  /* ── Grid view — infinite horizontal scroll + pagination ───────────
+   * The track is rendered as three side-by-side copies (see grid.ejs), each
+   * its own flex container, seeded with just the first page of photos
+   * (data-page-size / data-offset / data-has-more on #gridStrip, mirroring
+   * the Flow view's pagination). We start scrolled to the beginning of the
+   * middle copy; whenever native scrolling hits the strip's hard left/right
+   * edge, we silently jump scrollLeft by exactly one copy's width — since the
+   * copies are pixel-identical, the jump is invisible and the strip appears
+   * to scroll forever either way. Before that happens, once the visitor
+   * scrolls within LOAD_MARGIN of either edge, the next page is fetched from
+   * /api/photos/grid and appended to the tail of each of the three copies —
+   * existing nodes are never touched, so scrollLeft (and scrollWidth, which
+   * only ever grows) stays valid and nothing visibly jumps. */
   (function () {
     var track = document.getElementById('gridTrack');
     if (!strip || !track) return;
+    var copies = Array.prototype.slice.call(track.querySelectorAll('.grid-copy'));
+    if (copies.length === 0) return;
 
     // Fractional/subpixel widths (vw-based gaps & padding, high-DPI rounding) mean
     // strip.scrollWidth - strip.clientWidth is rarely an exact integer match for
@@ -774,11 +835,44 @@
     // often enough that the right side never looped, while the left edge (an exact
     // 0) always worked. A few px of slack fixes both edges symmetrically.
     var EDGE_TOLERANCE = 4;
+    // Start fetching the next page once this close (in px) to either copy edge,
+    // so the fetch has time to land before the wrap-around scroll gets there.
+    var LOAD_MARGIN = 1200;
 
     var copyWidth = 0;
+    var pageSize = parseInt(strip.getAttribute('data-page-size'), 10) || 30;
+    var offset = parseInt(strip.getAttribute('data-offset'), 10) || 0;
+    var hasMore = strip.getAttribute('data-has-more') === '1';
+    var loading = false;
+
+    function buildGridItem(p) {
+      var a = document.createElement('a');
+      a.href = '/photo/' + encodeURIComponent(p.slug);
+      a.className = 'photo-item group relative shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)]';
+      a.setAttribute('data-category', p.category || '');
+      a.setAttribute('data-collection', p.collection || '');
+      a.setAttribute('data-camera', p.camera || '');
+      a.setAttribute('data-lens', p.lens || '');
+      a.setAttribute('data-country', p.country || '');
+      a.setAttribute('data-state', p.state || '');
+      a.setAttribute('data-year', p.year || '');
+      a.innerHTML =
+        '<img src="' + escAttr(p.src) + '" alt="' + escAttr(p.alt) + '" class="h-full w-auto object-cover select-none">' +
+        '<span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+          '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
+            '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
+          '</span>' +
+        '</span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -left-[12px] w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' + esc(p.cap) + '</span>';
+      return a;
+    }
 
     function measure() {
-      copyWidth = strip.scrollWidth / 3;
+      copyWidth = strip.scrollWidth / copies.length;
     }
 
     function goToStart() {
@@ -786,9 +880,36 @@
       if (copyWidth > 0) strip.scrollLeft = copyWidth;
     }
 
+    function loadNextPage() {
+      if (loading || !hasMore) return;
+      loading = true;
+      fetch('/api/photos/grid?offset=' + offset + '&limit=' + pageSize)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.success && data.photos && data.photos.length) {
+            copies.forEach(function (copyEl) {
+              data.photos.forEach(function (p) { copyEl.appendChild(buildGridItem(p)); });
+            });
+            offset = data.nextOffset;
+            applyFilters();
+          }
+          hasMore = !!(data && data.hasMore);
+          loading = false;
+        })
+        .catch(function () {
+          loading = false; // let the next qualifying scroll retry
+        });
+    }
+
     strip.addEventListener('scroll', function () {
+      measure();
       if (copyWidth <= 0) return;
       var maxScrollLeft = strip.scrollWidth - strip.clientWidth;
+
+      if (hasMore && (strip.scrollLeft <= LOAD_MARGIN || strip.scrollLeft >= maxScrollLeft - LOAD_MARGIN)) {
+        loadNextPage();
+      }
+
       if (strip.scrollLeft <= EDGE_TOLERANCE) {
         strip.scrollLeft += copyWidth;
       } else if (strip.scrollLeft >= maxScrollLeft - EDGE_TOLERANCE) {
