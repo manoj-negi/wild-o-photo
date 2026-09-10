@@ -802,4 +802,113 @@
     window.addEventListener('resize', measure);
     requestAnimationFrame(function () { setTimeout(goToStart, 60); });
   })();
+
+  /* ── Flow view — infinite scroll pagination ────────────────────────
+   * The server renders the first page already laid out (see index.ejs). As the
+   * visitor nears the bottom of #flowCanvas, fetch the next page of real photos
+   * from /api/photos/flow, position each one (continuing the same auto-layout
+   * cycle the server used) and grow the canvas to fit. */
+  (function () {
+    var canvas = document.getElementById('flowCanvas');
+    var stateEl = document.getElementById('flowState');
+    var sentinel = document.getElementById('flowSentinel');
+    if (!canvas || !stateEl || !sentinel) return;
+
+    // Must match index.ejs's masonry engine exactly: each column keeps stacking from
+    // wherever the server (or the previous page's fetch) left its bottom edge, so a
+    // freshly-loaded page continues the same 5 columns instead of restarting them.
+    var COLUMNS = window.__flowColumns || [];
+    var COLUMN_GAP = window.__flowColumnGap || 3;
+    var pageSize = parseInt(canvas.getAttribute('data-page-size'), 10) || 30;
+    var offset = parseInt(canvas.getAttribute('data-offset'), 10) || 0;
+    var hasMore = canvas.getAttribute('data-has-more') === '1';
+    var columnBottoms = (stateEl.getAttribute('data-column-bottoms') || '')
+      .split(',').map(parseFloat);
+    var columnCounts = (stateEl.getAttribute('data-column-counts') || '')
+      .split(',').map(function (n) { return parseInt(n, 10) || 0; });
+    var maxBottom = Math.max.apply(null, columnBottoms) + 4;
+    var loading = false;
+
+    function nextAutoPos() {
+      var idx = 0;
+      for (var i = 1; i < columnBottoms.length; i++) {
+        if (columnBottoms[i] < columnBottoms[idx]) idx = i;
+      }
+      var col = COLUMNS[idx];
+      var t = columnBottoms[idx] + COLUMN_GAP;
+      var h = col.shapes[columnCounts[idx] % col.shapes.length];
+      columnCounts[idx]++;
+      columnBottoms[idx] = t + h;
+      return { l: col.l, t: t, w: col.w, h: h };
+    }
+
+    function buildPhotoItem(p, pos) {
+      var a = document.createElement('a');
+      a.href = '/photo/' + encodeURIComponent(p.slug);
+      a.className = 'photo-item group absolute block';
+      a.setAttribute('data-category', p.category || '');
+      a.setAttribute('data-collection', p.collection || '');
+      a.setAttribute('data-camera', p.camera || '');
+      a.setAttribute('data-lens', p.lens || '');
+      a.setAttribute('data-country', p.country || '');
+      a.setAttribute('data-state', p.state || '');
+      a.setAttribute('data-year', p.year || '');
+      a.style.left = pos.l + 'vw';
+      a.style.top = pos.t + 'vw';
+      a.style.width = pos.w + 'vw';
+      a.style.height = pos.h + 'vw';
+      a.innerHTML =
+        '<span class="block w-full h-full overflow-hidden">' +
+          '<img src="' + escAttr(p.src) + '" alt="' + escAttr(p.alt) + '" loading="lazy" class="w-full h-full object-cover select-none">' +
+        '</span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+          '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
+            '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
+          '</span>' +
+        '</span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -left-[12px] w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' + esc(p.cap) + '</span>';
+      return a;
+    }
+
+    var observer = new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) loadNextPage();
+    }, { rootMargin: '800px 0px' });
+
+    function appendPhotos(newPhotos) {
+      var frag = document.createDocumentFragment();
+      newPhotos.forEach(function (p) {
+        frag.appendChild(buildPhotoItem(p, nextAutoPos()));
+      });
+      maxBottom = Math.max.apply(null, columnBottoms) + 4;
+      canvas.insertBefore(frag, stateEl);
+      canvas.style.height = maxBottom + 'vw';
+      sentinel.style.top = maxBottom + 'vw';
+      applyFilters();
+    }
+
+    function loadNextPage() {
+      if (loading || !hasMore) return;
+      loading = true;
+      fetch('/api/photos/flow?offset=' + offset + '&limit=' + pageSize)
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (data && data.success && data.photos && data.photos.length) {
+            appendPhotos(data.photos);
+            offset = data.nextOffset;
+          }
+          hasMore = !!(data && data.hasMore);
+          if (!hasMore) observer.unobserve(sentinel);
+          loading = false;
+        })
+        .catch(function () {
+          loading = false; // let the observer retry on the next intersection
+        });
+    }
+
+    if (hasMore) observer.observe(sentinel);
+  })();
 })();

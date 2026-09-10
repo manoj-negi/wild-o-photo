@@ -185,15 +185,24 @@ const formatLensName = (brand?: string, model?: string, fallback?: string): stri
   return `${brand} ${model}`;
 };
 
+// Number of photos rendered on the flow view's first load, and fetched per
+// /api/photos/flow page as the visitor scrolls near the bottom of the canvas.
+const FLOW_PAGE_SIZE = 30;
+
 // ── Rendered page handlers ───────────────────────────────────────────────────
 
 /** GET / — flow view */
 const getFlow = async (req: Request, res: Response) => {
   try {
+    const [[{ total }]] = await pool.query<any[]>(
+      "SELECT COUNT(*) AS total FROM photos p WHERE p.live = 1"
+    );
     const [photoRows] = await pool.query<any[]>(
       `${SELECT_SITE_PHOTOS}
        WHERE p.live = 1
-       ORDER BY p.id DESC`
+       ORDER BY p.id DESC
+       LIMIT ?`,
+      [FLOW_PAGE_SIZE]
     );
     const [camRows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
@@ -211,8 +220,16 @@ const getFlow = async (req: Request, res: Response) => {
 
     const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
     const cameras = buildCameraMenu(camRows, photoCameras);
+    const hasMore = photos.length < total;
 
-    res.render("index", { title: "Of Wild & Walls", photos, cameras });
+    res.render("index", {
+      title: "Of Wild & Walls",
+      photos,
+      cameras,
+      hasMore,
+      nextOffset: photos.length,
+      pageSize: FLOW_PAGE_SIZE,
+    });
   } catch (err) {
     console.error("Error rendering flow page:", err);
     res.status(500).send("Error loading page");
@@ -364,11 +381,23 @@ const getPhotoDetail = async (req: Request, res: Response) => {
 
 // ── JSON API endpoints ────────────────────────────────────────────────────────
 
-/** GET /api/photos/flow — live photos tagged for the Flow view */
+/** GET /api/photos/flow — live photos tagged for the Flow view (paginated: ?offset=&limit=) */
 const getFlowAPI = async (req: Request, res: Response) => {
   try {
+    const MAX_LIMIT = 100;
+    let limit = parseInt(String(req.query.limit || ""), 10);
+    if (!Number.isFinite(limit) || limit <= 0) limit = FLOW_PAGE_SIZE;
+    limit = Math.min(limit, MAX_LIMIT);
+
+    let offset = parseInt(String(req.query.offset || ""), 10);
+    if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+    const [[{ total }]] = await pool.query<any[]>(
+      "SELECT COUNT(*) AS total FROM photos p WHERE p.live = 1"
+    );
     const [photoRows] = await pool.query<DBPhotoRow[]>(
-      `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC`
+      `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC LIMIT ? OFFSET ?`,
+      [limit, offset]
     );
     const [collRows] = await pool.query<DBCollectionRow[]>(
       "SELECT name, description FROM collections ORDER BY id ASC"
@@ -378,7 +407,10 @@ const getFlowAPI = async (req: Request, res: Response) => {
     collRows.forEach(c => { collectionMap[c.name] = c.description || ""; });
 
     const photos = photoRows.map(r => mapToSitePhoto(r, collectionMap));
-    res.json({ success: true, count: photos.length, photos });
+    const nextOffset = offset + photos.length;
+    const hasMore = nextOffset < total;
+
+    res.json({ success: true, count: photos.length, total, offset, nextOffset, hasMore, photos });
   } catch (err) {
     console.error("API error /api/photos/flow:", err);
     res.status(500).json({ success: false, error: "Failed to fetch flow photos" });

@@ -2,31 +2,51 @@
 <%- include('partials/head', { title: title }) %>
 <%- include('partials/header', { view: 'flow' }) %>
 <%
-  var autoPositions = [
-    { l: 2,    t: 2,    w: 22, h: 29 },
-    { l: 26.5, t: 1.4,  w: 10, h: 7  },
-    { l: 38.5, t: 2,    w: 22, h: 16 },
-    { l: 63.5, t: 1.5,  w: 10, h: 13 },
-    { l: 76,   t: 2,    w: 22, h: 21 },
-    { l: 2,    t: 34,   w: 22, h: 16 },
-    { l: 26.5, t: 10.5, w: 10, h: 20 },
-    { l: 38.5, t: 20,   w: 22, h: 21 },
-    { l: 63.5, t: 17,   w: 10, h: 14 },
-    { l: 76,   t: 25,   w: 22, h: 21 },
+  /* True masonry, not a fixed repeating block: each column tracks its own current
+     bottom edge, and every photo is dropped into whichever column is shortest right
+     now. Columns then advance at their own pace instead of all waiting for the
+     tallest one to finish before starting a "new row" — which is what produced a
+     dead band across the idle columns every 10 photos. Each column alternates
+     between its two tile heights (tall/short) as photos land in it. */
+  var COLUMNS = [
+    { l: 2,    w: 22, top: 2,   shapes: [29, 16] },
+    { l: 26.5, w: 10, top: 1.4, shapes: [7,  20] },
+    { l: 38.5, w: 22, top: 2,   shapes: [16, 21] },
+    { l: 63.5, w: 10, top: 1.5, shapes: [13, 14] },
+    { l: 76,   w: 22, top: 2,   shapes: [21, 21] },
   ];
-  var autoIdx = 0;
-  var maxBottom = 73.2;
-  photos.forEach(function(p) {
-    var t = parseFloat(p.t) || 0;
-    var h = parseFloat(p.h) || 0;
-    if (t + h > maxBottom) maxBottom = t + h + 4;
+  var COLUMN_GAP = 3;
+
+  var columnBottoms = COLUMNS.map(function (c) { return c.top - COLUMN_GAP; });
+  var columnCounts = COLUMNS.map(function () { return 0; });
+
+  function nextAutoPos() {
+    var idx = 0;
+    for (var i = 1; i < columnBottoms.length; i++) {
+      if (columnBottoms[i] < columnBottoms[idx]) idx = i;
+    }
+    var col = COLUMNS[idx];
+    var t = columnBottoms[idx] + COLUMN_GAP;
+    var h = col.shapes[columnCounts[idx] % col.shapes.length];
+    columnCounts[idx]++;
+    columnBottoms[idx] = t + h;
+    return { l: col.l, t: t, w: col.w, h: h };
+  }
+
+  var positioned = photos.map(function (p) {
+    var pos = nextAutoPos();
+    return { photo: p, pos: pos };
   });
+  var maxBottom = Math.max.apply(null, columnBottoms) + 4;
 %>
 <main class="pt-[74px]">
-  <div id="flowCanvas" class="relative w-full" style="height:<%= maxBottom %>vw">
-    <% photos.forEach(function (p, i) {
-      var hasPos = p.w > 0 && p.h > 0;
-      var pos = hasPos ? p : autoPositions[autoIdx++ % autoPositions.length];
+  <div id="flowCanvas" class="relative w-full"
+       style="height:<%= maxBottom %>vw"
+       data-offset="<%= nextOffset %>"
+       data-page-size="<%= pageSize %>"
+       data-has-more="<%= hasMore ? '1' : '0' %>">
+    <% positioned.forEach(function (item) {
+      var p = item.photo, pos = item.pos;
     %>
       <a href="/photo/<%= p.slug %>" class="photo-item group absolute block"
          data-category="<%= p.category %>"
@@ -52,6 +72,16 @@
         <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
       </a>
     <% }); %>
+    <%# Carries each column's current bottom edge forward so app.js can keep stacking
+        the next page's photos into the same 5 columns from exactly where this page
+        left off, instead of restarting the masonry from scratch. %>
+    <span id="flowState" hidden
+          data-column-bottoms="<%= columnBottoms.join(',') %>"
+          data-column-counts="<%= columnCounts.join(',') %>"></span>
+    <%# Watched by app.js: crossing near this (moved to the new bottom edge after each
+        page loads) triggers the next /api/photos/flow fetch. %>
+    <div id="flowSentinel" class="absolute inset-x-0 pointer-events-none" style="top:<%= maxBottom %>vw; height:1px"></div>
   </div>
 </main>
+<script>window.__flowColumns = <%- JSON.stringify(COLUMNS) %>; window.__flowColumnGap = <%= COLUMN_GAP %>;</script>
 <%- include('partials/footer', { cameras: cameras, cameraOpen: false }) %>
