@@ -17,6 +17,8 @@ interface DBPhotoRow extends RowDataPacket {
   collection_id?: number | null;
   camera_id?: number | null;
   lens_id?: number | null;
+  country_id?: number | null;
+  state?: string;
   date: string;
   description: string;
   alt_note?: string;
@@ -104,6 +106,8 @@ const mapToSitePhoto = (
     // taxonomy
     category: (row as any).cat_name || "",
     collection: collectionName,
+    country: (row as any).country_name || "",
+    state: row.state || "",
     // detail-panel fields
     about: row.description || "",
     altNote: row.alt_note || "",
@@ -113,6 +117,7 @@ const mapToSitePhoto = (
     location: getMeta("Location"),
     settings: getMeta("Settings"),
     date: row.date || "",
+    year: row.date ? String(row.date).slice(0, 4) : "",
     // flags
     live: Boolean(row.live),
     views: ["Flow", "Grid"],
@@ -150,7 +155,7 @@ const buildCameraMenu = (
 
 /** SELECT statement joining entity tables by ID */
 const SELECT_SITE_PHOTOS = `
-  SELECT 
+  SELECT
     p.*,
     cat.name AS cat_name,
     col.name AS col_name,
@@ -158,12 +163,14 @@ const SELECT_SITE_PHOTOS = `
     cam.brand AS cam_brand,
     cam.model AS cam_model,
     len.brand AS len_brand,
-    len.model AS len_model
+    len.model AS len_model,
+    co.country AS country_name
   FROM photos p
   LEFT JOIN categories cat ON p.category_id = cat.id
   LEFT JOIN collections col ON p.collection_id = col.id
   LEFT JOIN cameras cam ON p.camera_id = cam.id
   LEFT JOIN lenses len ON p.lens_id = len.id
+  LEFT JOIN countries co ON p.country_id = co.id
 `;
 
 const formatCameraName = (brand?: string, model?: string, fallback?: string): string => {
@@ -260,7 +267,9 @@ const getPhotoDetail = async (req: Request, res: Response) => {
     const filterCollection = String(req.query.collection || "").trim().toLowerCase();
     const filterCamera = String(req.query.camera || "").trim().toLowerCase();
     const filterLens = String(req.query.lens || "").trim().toLowerCase();
-    const hasFilters = !!(filterCategory || filterCollection || filterCamera || filterLens);
+    const filterCountry = String(req.query.country || "").trim().toLowerCase();
+    const filterYear = String(req.query.year || "").trim().toLowerCase();
+    const hasFilters = !!(filterCategory || filterCollection || filterCamera || filterLens || filterCountry || filterYear);
 
     const [allPhotoRowsRaw] = await pool.query<any[]>(
       `${SELECT_SITE_PHOTOS} WHERE p.live = 1 ORDER BY p.id DESC`
@@ -274,6 +283,8 @@ const getPhotoDetail = async (req: Request, res: Response) => {
       if (filterCollection && (r.col_name || "").trim().toLowerCase() !== filterCollection) return false;
       if (filterCamera && formatCameraName(r.cam_brand, r.cam_model, "").trim().toLowerCase() !== filterCamera) return false;
       if (filterLens && formatLensName(r.len_brand, r.len_model, "").trim().toLowerCase() !== filterLens) return false;
+      if (filterCountry && (r.state || "").trim().toLowerCase() !== filterCountry) return false;
+      if (filterYear && String(r.date || "").slice(0, 4) !== filterYear) return false;
       return true;
     };
 
@@ -289,6 +300,8 @@ const getPhotoDetail = async (req: Request, res: Response) => {
       filterCollection ? `collection=${encodeURIComponent(req.query.collection as string)}` : "",
       filterCamera ? `camera=${encodeURIComponent(req.query.camera as string)}` : "",
       filterLens ? `lens=${encodeURIComponent(req.query.lens as string)}` : "",
+      filterCountry ? `country=${encodeURIComponent(req.query.country as string)}` : "",
+      filterYear ? `year=${encodeURIComponent(req.query.year as string)}` : "",
     ].filter(Boolean).join("&");
 
     const buildDetailsFromJoined = (r: any) => {
@@ -580,6 +593,60 @@ const getCategoriesAPI = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * GET /api/countries — country/state groups actually used by live photos, each state with
+ * its photo count. Unlike categories/cameras/lenses (small curated master lists), the
+ * countries reference table holds ~2,800 world country/state rows, so the footer menu is
+ * built from what photos actually use rather than the full reference list.
+ */
+const getCountriesAPI = async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT co.country AS country, co.state AS state, COUNT(*) AS cnt
+       FROM photos p
+       JOIN countries co ON p.country_id = co.id
+       WHERE p.live = 1 AND p.country_id IS NOT NULL
+       GROUP BY co.country, co.state
+       ORDER BY co.country ASC, co.state ASC`
+    );
+
+    const groupMap: Record<string, { name: string; count: number }[]> = {};
+    rows.forEach(r => {
+      const country = r.country || "Other";
+      if (!groupMap[country]) groupMap[country] = [];
+      groupMap[country].push({ name: r.state, count: Number(r.cnt) || 0 });
+    });
+
+    const countries = Object.entries(groupMap).map(([country, states]) => ({ country, states }));
+    res.json({ success: true, count: countries.length, countries });
+  } catch (err) {
+    console.error("API error /api/countries:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch countries" });
+  }
+};
+
+/** GET /api/years — distinct years (from photos.date) used by live photos, with count */
+const getYearsAPI = async (req: Request, res: Response) => {
+  try {
+    const [rows] = await pool.query<RowDataPacket[]>(
+      `SELECT LEFT(date, 4) AS year, COUNT(*) AS cnt
+       FROM photos
+       WHERE live = 1 AND date IS NOT NULL AND date != ''
+       GROUP BY LEFT(date, 4)
+       ORDER BY year DESC`
+    );
+
+    const years = rows
+      .filter(r => /^\d{4}$/.test(r.year || ""))
+      .map(r => ({ title: r.year, count: Number(r.cnt) || 0 }));
+
+    res.json({ success: true, count: years.length, years });
+  } catch (err) {
+    console.error("API error /api/years:", err);
+    res.status(500).json({ success: false, error: "Failed to fetch years" });
+  }
+};
+
 /** GET /api/collections — all collections with live photo count */
 const getCollectionsAPI = async (req: Request, res: Response) => {
   try {
@@ -623,4 +690,6 @@ export default {
   getLensesAPI,
   getCategoriesAPI,
   getCollectionsAPI,
+  getCountriesAPI,
+  getYearsAPI,
 };

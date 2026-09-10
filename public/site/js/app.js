@@ -87,15 +87,17 @@
 
   /* ── Photo filtering ─────────────────────────────────────────────── */
 
-  // activeFilters: { category, collection, camera, lens } — null means no filter
-  var activeFilters = { category: null, collection: null, camera: null, lens: null };
+  // activeFilters: { category, collection, camera, lens, country, year } — null means no filter
+  var activeFilters = { category: null, collection: null, camera: null, lens: null, country: null, year: null };
 
   /** Map filter type name → the data-attribute key on .photo-item elements */
   var dataAttrMap = {
     category:   'category',
     collection: 'collection',
     camera:     'camera',
-    lens:       'lens'
+    lens:       'lens',
+    country:    'state',
+    year:       'year'
   };
 
   /** Map filter type → which button label to update */
@@ -103,7 +105,9 @@
     category:   'Category',
     collection: 'Collections',
     camera:     'Camera',
-    lens:       'Lens'
+    lens:       'Lens',
+    country:    'Country',
+    year:       'Year'
   };
 
   function applyFilters() {
@@ -265,6 +269,17 @@
 
   // Lens — grouped by brand
   setupMenu('lensMenu', 'lensBtn', '/api/lenses', 'lenses', buildGroupedHTML, 'lens');
+
+  // Country — grouped by country, each state with a live-photo count
+  setupMenu('countryMenu', 'countryBtn', '/api/countries', 'countries', function (items) {
+    var groups = (items || []).map(function (c) { return { brand: c.country, models: c.states }; });
+    return buildGroupedHTML(groups);
+  }, 'country');
+
+  // Year — flat list, most recent first (order returned by the API)
+  setupMenu('yearMenu', 'yearBtn', '/api/years', 'years', function (items) {
+    return buildFlatHTML(items, false);
+  }, 'year');
 
   /* ── Bottom bar pill highlight (legacy — kept for visual only) ────── */
   document.querySelectorAll('[data-filter]').forEach(function (b) {
