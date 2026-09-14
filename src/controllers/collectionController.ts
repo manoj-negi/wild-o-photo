@@ -25,7 +25,7 @@ const getCollections = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT collection_id FROM photos"
+      "SELECT collection_id FROM photos WHERE live = 1"
     );
 
     if (search) {
@@ -139,8 +139,11 @@ const deleteCollection = async (req: Request, res: Response) => {
     }
 
     res.redirect("/admin/collections?page=" + page + "&flash=Collection+deleted");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting collection:", error);
+    if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {
+      return res.redirect("/admin/collections?error=Cannot+delete+collection+because+it+is+in+use+by+one+or+more+photos.");
+    }
     res.status(500).send("Error deleting collection");
   }
 };

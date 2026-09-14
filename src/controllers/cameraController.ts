@@ -29,7 +29,7 @@ const getCameras = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT camera_id FROM photos"
+      "SELECT camera_id FROM photos WHERE live = 1"
     );
 
     if (search) {
@@ -155,8 +155,11 @@ const deleteCamera = async (req: Request, res: Response) => {
     }
 
     res.redirect("/admin/cameras?page=" + page + "&flash=Camera+deleted");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting camera:", error);
+    if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {
+      return res.redirect("/admin/cameras?error=Cannot+delete+camera+because+it+is+in+use+by+one+or+more+photos.");
+    }
     res.status(500).send("Error deleting camera");
   }
 };

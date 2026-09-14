@@ -66,12 +66,8 @@
       var html = '';
       topLevel.forEach(function (item) {
         var children = parentMap[item.title] || [];
-        if (children.length > 0) {
-          html += brandHeader(item.title);
-          children.forEach(function (c) { html += itemRow(c.title, c.count); });
-        } else {
-          html += itemRow(item.title, item.count);
-        }
+        html += itemRow(item.title, item.count);
+        children.forEach(function (c) { html += itemRow(c.title, c.count); });
       });
       Object.keys(parentMap).forEach(function (p) {
         var exists = topLevel.some(function (t) { return t.title === p; });
@@ -144,9 +140,7 @@
       el.style.top = pos.t + 'vw';
       el.style.width = pos.w + 'vw';
       el.style.height = pos.h + 'vw';
-      el.style.opacity = '';
-      el.style.pointerEvents = '';
-      el.style.visibility = '';
+      el.style.display = '';
     });
 
     var maxBottom = (columnBottoms.length ? Math.max.apply(null, columnBottoms) : 0) + 4;
@@ -182,12 +176,13 @@
         }
       });
       if (flowCanvas && el.parentNode === flowCanvas) {
+        // display:none (not just opacity/visibility) so a filtered-out item — which
+        // keeps its old absolute position until it's shown again — can't inflate the
+        // page's scrollable area beyond what reflowFlowLayout() just sized the canvas to.
         if (visible) {
           visibleFlowItems.push(el);
         } else {
-          el.style.opacity = '0';
-          el.style.pointerEvents = 'none';
-          el.style.visibility = 'hidden';
+          el.style.display = 'none';
         }
       } else {
         el.style.display = visible ? '' : 'none';
@@ -763,14 +758,16 @@
         panel.classList.remove('translate-x-full');
         if (plusIcon) plusIcon.classList.add('hidden');
         if (closeIcon) closeIcon.classList.remove('hidden');
-        pBtn.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black');
+        pBtn.classList.remove('bg-white', 'dark:bg-neutral-900', 'text-neutral-800', 'dark:text-white', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-800');
+        pBtn.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'hover:bg-neutral-900', 'dark:hover:bg-neutral-100');
         if (stage) stage.style.paddingRight = '380px';
       } else {
         // Close drawer
         panel.classList.add('translate-x-full');
         if (plusIcon) plusIcon.classList.remove('hidden');
         if (closeIcon) closeIcon.classList.add('hidden');
-        pBtn.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black');
+        pBtn.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'hover:bg-neutral-900', 'dark:hover:bg-neutral-100');
+        pBtn.classList.add('bg-white', 'dark:bg-neutral-900', 'text-neutral-800', 'dark:text-white', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-800');
         if (stage) stage.style.paddingRight = '120px';
       }
     });

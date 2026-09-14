@@ -20,7 +20,7 @@ const getCategories = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT category_id FROM photos"
+      "SELECT category_id FROM photos WHERE live = 1"
     );
 
     if (search) {
@@ -140,8 +140,11 @@ const deleteCategory = async (req: Request, res: Response) => {
     }
 
     res.redirect("/admin/categories?page=" + page + "&flash=Category+deleted");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting category:", error);
+    if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {
+      return res.redirect("/admin/categories?error=Cannot+delete+category+because+it+is+in+use+by+one+or+more+photos.");
+    }
     res.status(500).send("Error deleting category");
   }
 };

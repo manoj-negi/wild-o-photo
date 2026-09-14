@@ -131,13 +131,12 @@ const mapToSitePhoto = (
  */
 const buildCameraMenu = (
   cameraRows: DBCameraRow[],
-  photoCameras: string[]
+  photoRows: RowDataPacket[]
 ) => {
-  // count photos per camera string (case-insensitive match)
-  const countMap: Record<string, number> = {};
-  photoCameras.forEach(c => {
-    const k = (c || "").trim().toLowerCase();
-    if (k) countMap[k] = (countMap[k] || 0) + 1;
+  // count photos per camera_id (matches the admin panel's counting logic)
+  const countMap: Record<number, number> = {};
+  photoRows.forEach(r => {
+    if (r.camera_id != null) countMap[r.camera_id] = (countMap[r.camera_id] || 0) + 1;
   });
 
   // group cameras by brand
@@ -145,7 +144,7 @@ const buildCameraMenu = (
   cameraRows.forEach(row => {
     const brand = row.brand || "Other";
     const name = (row.model || "").trim();
-    const count = countMap[name.toLowerCase()] || 0;
+    const count = countMap[row.id] || 0;
     if (!brandMap[brand]) brandMap[brand] = [];
     brandMap[brand].push({ name, count });
   });
@@ -222,8 +221,7 @@ const getFlow = async (req: Request, res: Response) => {
       return p;
     });
 
-    const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
-    const cameras = buildCameraMenu(camRows, photoCameras);
+    const cameras = buildCameraMenu(camRows, photoRows);
     const hasMore = photos.length < total;
 
     res.render("index", {
@@ -267,8 +265,7 @@ const getGrid = async (req: Request, res: Response) => {
       return p;
     });
 
-    const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
-    const cameras = buildCameraMenu(camRows, photoCameras);
+    const cameras = buildCameraMenu(camRows, photoRows);
     const hasMore = photos.length < total;
 
     res.render("grid", {
@@ -378,8 +375,7 @@ const getPhotoDetail = async (req: Request, res: Response) => {
       ...mapJoinedToSitePhoto(r),
       details: buildDetailsFromJoined(r)
     }));
-    const photoCameras = allPhotoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, r.camera));
-    const cameras = buildCameraMenu(camRows, photoCameras);
+    const cameras = buildCameraMenu(camRows, allPhotoRows);
     const details = buildDetailsFromJoined(rows[0]);
 
     res.render("detail", {
@@ -577,8 +573,7 @@ const getCamerasAPI = async (req: Request, res: Response) => {
     const [photoRows] = await pool.query<RowDataPacket[]>(
       `${SELECT_SITE_PHOTOS} WHERE p.live = 1`
     );
-    const photoCameras = photoRows.map(r => formatCameraName(r.cam_brand, r.cam_model, ""));
-    const cameras = buildCameraMenu(camRows, photoCameras);
+    const cameras = buildCameraMenu(camRows, photoRows);
     res.json({ success: true, count: cameras.length, cameras });
   } catch (err) {
     console.error("API error /api/cameras:", err);
@@ -596,24 +591,17 @@ const getLensesAPI = async (req: Request, res: Response) => {
       `${SELECT_SITE_PHOTOS} WHERE p.live = 1`
     );
 
-    const countMap: Record<string, number> = {};
+    // count photos per lens_id (matches the admin panel's counting logic)
+    const countMap: Record<number, number> = {};
     photoRows.forEach(r => {
-      const meta = parseMeta(r.metadata);
-      const lensName = formatLensName(r.len_brand, r.len_model, meta["Lens"] || meta["lens"] || "");
-      const k = (lensName || "").trim().toLowerCase();
-      if (k) countMap[k] = (countMap[k] || 0) + 1;
-      if (r.len_model) {
-        const mK = String(r.len_model).trim().toLowerCase();
-        countMap[mK] = (countMap[mK] || 0) + 1;
-      }
+      if (r.lens_id != null) countMap[r.lens_id] = (countMap[r.lens_id] || 0) + 1;
     });
 
     const brandMap: Record<string, { name: string; count: number }[]> = {};
     lensRows.forEach((row: any) => {
       const brand = (row.brand || "Other").trim();
-      const name = (row.model || "").trim();
-      const fullName = formatLensName(row.brand, row.model, name);
-      const count = countMap[name.toLowerCase()] || countMap[fullName.toLowerCase()] || 0;
+      const fullName = formatLensName(row.brand, row.model, row.model);
+      const count = countMap[row.id] || 0;
       if (!brandMap[brand]) brandMap[brand] = [];
       brandMap[brand].push({ name: fullName, count });
     });

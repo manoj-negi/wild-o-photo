@@ -29,7 +29,7 @@ const getCountries = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT camera_id FROM photos"
+      "SELECT camera_id FROM photos WHERE live = 1"
     );
 
     if (search) {
@@ -161,8 +161,11 @@ const deleteCountry = async (req: Request, res: Response) => {
     }
 
     res.redirect("/admin/countries?page=" + page + "&flash=Country+deleted");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting country:", error);
+    if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {
+      return res.redirect("/admin/countries?error=Cannot+delete+country+because+it+is+in+use+by+one+or+more+photos.");
+    }
     res.status(500).send("Error deleting country");
   }
 };

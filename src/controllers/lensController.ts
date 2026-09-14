@@ -33,7 +33,7 @@ const getLenses = async (req: Request, res: Response) => {
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
-      "SELECT metadata FROM photos"
+      "SELECT lens_id FROM photos WHERE live = 1"
     );
 
     if (search) {
@@ -54,9 +54,7 @@ const getLenses = async (req: Request, res: Response) => {
 
     res.render("lenses", {
       nav: "lenses",
-      photos: photoRows.map(r => ({
-        meta: typeof r.metadata === "string" ? JSON.parse(r.metadata || "[]") : (r.metadata || [])
-      })),
+      photos: photoRows,
       categories: catRows,
       collections: collRows,
       cameras: camRows,
@@ -164,8 +162,11 @@ const deleteLens = async (req: Request, res: Response) => {
     }
 
     res.redirect("/admin/lenses?page=" + page + "&flash=Lens+deleted");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error deleting lens:", error);
+    if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {
+      return res.redirect("/admin/lenses?error=Cannot+delete+lens+because+it+is+in+use+by+one+or+more+photos.");
+    }
     res.status(500).send("Error deleting lens");
   }
 };

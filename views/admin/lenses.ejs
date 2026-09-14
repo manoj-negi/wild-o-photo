@@ -44,7 +44,7 @@
             <tr class="bg-sand">
               <th class="th w-[30%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="brand">Brand <span class="text-amber"></span></button></th>
               <th class="th"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="model">Model <span class="text-amber"></span></button></th>
-              <th class="th w-[12%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="photos">Photos <span class="text-amber"></span></button></th>
+              <th class="th w-[12%]"><button type="button" class="sort flex w-full items-center gap-1 text-[11px] uppercase tracking-[0.1em]" data-key="photos">Live <span class="text-amber"></span></button></th>
               <th class="th w-[140px] text-right">Actions</th>
             </tr>
           </thead>
@@ -55,14 +55,14 @@
               </tr>
             <% } %>
             <% lenses.forEach(function (l, i) { %>
-              <% const count = photos.filter(p => (p.meta || []).some(m => m.key === 'Lens' && m.value.includes(l.model))).length; %>
+              <% const count = photos.filter(p => Number(p.lens_id) === Number(l.id)).length; %>
               <tr class="border-b border-[#f3ede4]"
                   data-brand="<%= l.brand || '' %>"
                   data-model="<%= l.model %>"
                   data-photos="<%= count %>">
                 <td class="td truncate font-semibold text-pine"><%= l.brand || "-" %></td>
                 <td class="td truncate font-medium"><%= l.model %></td>
-                <td class="td text-xs text-mute"><%= photos.filter(p => (p.meta || []).some(m => m.key === 'Lens' && m.value.includes(l.model))).length %></td>
+                <td class="td text-xs text-mute"><%= photos.filter(p => Number(p.lens_id) === Number(l.id)).length %></td>
                 <td class="td">
                   <div class="flex justify-end gap-1.5">
                     <button type="button"
