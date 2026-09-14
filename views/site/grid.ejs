@@ -1,11 +1,32 @@
 <%# views/grid.ejs — grid view. expects: title, photos[] { src, alt }, cameras[] %>
 <%- include('partials/head', { title: title }) %>
 <%- include('partials/header', { view: 'grid' }) %>
-  <main class="h-screen flex items-center overflow-hidden pt-[74px] pb-[340px]">
-    <div id="gridStrip" class="w-full overflow-x-auto no-bar">
-      <div class="flex items-center gap-[14px] px-[1.5vw]">
-        <% photos.forEach(function (p) { %>
-          <a href="/photo/<%= p.slug %>" class="group relative shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)]">
+  <main class="h-screen flex items-center justify-center overflow-hidden py-12">
+    <div id="gridStrip" class="w-full overflow-x-auto no-bar flex justify-center"
+         data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
+         data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
+         data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>">
+      <div id="gridTrack" class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max">
+        <%
+          // Infinite horizontal scroll: the strip is rendered three times in a row so
+          // scrolling past either end always has more (duplicate) content to scroll into.
+          // app.js watches for the native scroll hitting either hard edge and silently
+          // jumps back one copy's width, so the strip never runs out of photos to scroll.
+          // Each copy is its own flex container (rather than one flat list of items) so
+          // that loading another page can append new photos to the tail of each copy in
+          // place — the existing nodes never move or get rebuilt, so scrollLeft (and the
+          // visitor's scroll position) stays exactly where it was.
+          for (var gridCopy = 0; gridCopy < 3; gridCopy++) { %>
+        <div class="grid-copy flex items-center gap-[14px]">
+          <% photos.forEach(function (p) { %>
+          <a href="/photo/<%= p.slug %>" class="photo-item group relative shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)]"
+             data-category="<%= p.category %>"
+             data-collection="<%= p.collection %>"
+             data-camera="<%= p.camera %>"
+             data-lens="<%= p.lens %>"
+             data-country="<%= p.country %>"
+             data-state="<%= p.state %>"
+             data-year="<%= p.year %>">
             <img src="<%= p.src %>" alt="<%= p.alt %>" class="h-full w-auto object-cover select-none">
           <span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
             <span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">
@@ -18,8 +39,10 @@
           <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
           <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
           </a>
-        <% }); %>
+          <% }); %>
+        </div>
+        <%  } %>
       </div>
     </div>
   </main>
-<%- include('partials/footer', { cameras: cameras, cameraOpen: true }) %>
+<%- include('partials/footer', { cameras: cameras, cameraOpen: false }) %>

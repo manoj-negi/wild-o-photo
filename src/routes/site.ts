@@ -1,25 +1,34 @@
 import { Router } from "express";
-
-import photos from "../data/site-photos";
-import cameras from "../data/cameras";
-import details from "../data/details";
+import siteController from "../controllers/siteController";
 
 const router = Router();
 
-router.get("/", (req, res) => {
-  res.render("index", { title: "Of Wild & Walls", photos, cameras });
-});
+// ── Rendered pages ────────────────────────────────────────────────────────────
 
-router.get("/grid", (req, res) => {
-  res.render("grid", { title: "Of Wild & Walls", photos, cameras });
-});
+router.get("/", siteController.getFlow);
+router.get("/grid", siteController.getGrid);
+router.get("/photo/:slug", siteController.getPhotoDetail);
 
-router.get("/photo/:slug", (req, res) => {
-  const photo = photos.find(p => p.slug === req.params.slug);
-  const detail = details[req.params.slug];
-  if (!photo || !detail) return res.status(404).send("Photo not found");
+// ── Site JSON APIs ────────────────────────────────────────────────────────────
+//
+//  GET /api/photos              — all live photos  (?view=flow|grid &category= &collection= &q=)
+//  GET /api/photos/flow         — live photos visible in the Flow view
+//  GET /api/photos/grid         — live photos visible in the Grid view
+//  GET /api/photos/:slug        — single photo with full detail fields
+//  GET /api/cameras             — camera menu groups for the site footer
+//  GET /api/countries           — country/state menu groups (used by live photos) for the site footer
+//  GET /api/years                — distinct years (from photos.date), used by live photos, for the site footer
 
-  res.render("detail", { title: photo.cap, photo, photos, cameras, details: detail });
-});
+// Note: /flow and /grid must be registered BEFORE /:slug so Express matches them first.
+router.get("/api/photos/flow", siteController.getFlowAPI);
+router.get("/api/photos/grid", siteController.getGridAPI);
+router.get("/api/photos/:slug", siteController.getPhotoBySlugAPI);
+router.get("/api/photos", siteController.getPhotosAPI);
+router.get("/api/cameras", siteController.getCamerasAPI);
+router.get("/api/lenses", siteController.getLensesAPI);
+router.get("/api/categories", siteController.getCategoriesAPI);
+router.get("/api/collections", siteController.getCollectionsAPI);
+router.get("/api/countries", siteController.getCountriesAPI);
+router.get("/api/years", siteController.getYearsAPI);
 
 export default router;

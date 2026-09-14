@@ -33,5 +33,12 @@
     .rail-in  { animation: railIn .6s cubic-bezier(.2,.7,.2,1) both; }
     .fade-up  { animation: fadeUp .7s cubic-bezier(.2,.7,.2,1) both; }
   </style>
+  <%# Apply saved theme immediately to prevent flash of wrong theme %>
+  <script>
+    (function(){
+      var k = 'oww:theme';
+      if (localStorage.getItem(k) === 'dark') document.documentElement.classList.add('dark');
+    })();
+  </script>
 </head>
 <body class="bg-paper text-ink dark:bg-night dark:text-white font-sans">

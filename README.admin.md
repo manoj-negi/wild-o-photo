@@ -1,4 +1,4 @@
-# Studio Admin — Express + EJS + Tailwind
+# OF Wild & Walls Admin — Express + EJS + Tailwind
 
 Admin panel for the photography portfolio: photo data table, add/edit photo form with
 dynamic metadata fields, and categories (table + right-hand edit form + add modal).
