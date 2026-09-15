@@ -106,6 +106,29 @@
     year:       'Year'
   };
 
+  /** Filtering only ever looks at .photo-item elements already in the DOM, but
+   *  both views load photos incrementally (infinite scroll) — so a filter can
+   *  match photos that haven't been fetched yet and wrongly show zero results
+   *  (e.g. picking a country whose photos are all past the first page). Each
+   *  view's infinite-scroll IIFE below assigns its own "fetch every remaining
+   *  page" function here; whichever view is active wires itself in, the other
+   *  stays a no-op. */
+  var flowLoadAll = null;
+  var gridLoadAll = null;
+
+  /** Run before applying a newly-activated filter so it can see the full photo
+   *  set regardless of scroll position. Skipped when no filter is active (i.e.
+   *  clearing back to the unfiltered view) so normal lazy infinite scroll keeps
+   *  working rather than eagerly fetching everything on every clear. */
+  function applyFiltersAfterLoading() {
+    var hasActive = Object.keys(activeFilters).some(function (k) { return !!activeFilters[k]; });
+    if (!hasActive) { applyFilters(); return; }
+    var tasks = [];
+    if (flowLoadAll) tasks.push(flowLoadAll());
+    if (gridLoadAll) tasks.push(gridLoadAll());
+    Promise.all(tasks).then(applyFilters);
+  }
+
   /** Flow view only: photos are pre-split round-robin into N column groups at
    *  full-set order, so filtering down to a subset (hiding the rest in place)
    *  can leave columns badly unbalanced — a column whose photos mostly got
@@ -178,13 +201,13 @@
       activeFilters[type] = value;
     }
     updateButtonLabel(type);
-    applyFilters();
+    applyFiltersAfterLoading();
   }
 
   function clearFilter(type) {
     activeFilters[type] = null;
     updateButtonLabel(type);
-    applyFilters();
+    applyFiltersAfterLoading();
   }
 
   /** Build a query string (e.g. "category=Birds&camera=SONY%20A7IV") from the active filters */
@@ -215,6 +238,11 @@
     var labelEl = btn.querySelector('span');
     if (!labelEl) return;
     var active = activeFilters[type];
+    // Location stores "country::India" / "state::Tokyo" internally so applyFilters()
+    // can tell the two kinds apart — strip that prefix back off for display.
+    if (active && type === 'country' && active.indexOf('::') !== -1) {
+      active = active.slice(active.indexOf('::') + 2);
+    }
     if (active) {
       // Truncate long names for the pill
       var short = active.length > 16 ? active.substring(0, 14) + '…' : active;
@@ -423,13 +451,21 @@
             e.stopPropagation();
             activeFilters.country = null;
             updateButtonLabel('country');
-            applyFilters();
+            applyFiltersAfterLoading();
             menuEl.classList.add('hidden');
           });
         }
 
         /* Row clicks — country or state selection */
         menuEl.addEventListener('click', function (e) {
+          // Each row's visible "radio" is a <label> wrapping a sr-only (clipped,
+          // unclickable-by-pointer) <input>. Clicking the label fires a click that
+          // bubbles here AND — per native label/control activation — the browser
+          // separately dispatches a synthetic click on the input itself, which also
+          // bubbles here. Without this guard both events run the toggle logic below,
+          // selecting the state and then immediately deselecting it again in the same
+          // gesture, so nothing ever appears to get selected.
+          if (e.target.closest('.oww-loc-radio')) return;
           var expand = e.target.closest('.oww-loc-expand');
           if (expand) {
             e.stopPropagation();
@@ -453,9 +489,14 @@
             activeFilters.country = newFilter;
           }
           updateButtonLabel('country');
-          applyFilters();
+          applyFiltersAfterLoading();
           rerender();
-          if (activeFilters.country) menuEl.classList.add('hidden');
+          // Only close on a specific-state pick. Closing on a country pick too (the
+          // menu had done that unconditionally) meant clicking a country immediately
+          // hid the very state list it had just expanded, before the visitor could
+          // ever click one — selecting a country worked, but there was no way to then
+          // narrow down to a state.
+          if (kind === 'state' && activeFilters.country) menuEl.classList.add('hidden');
         });
       })
       .catch(function () {
@@ -468,7 +509,7 @@
       if (activeFilters.country) {
         activeFilters.country = null;
         updateButtonLabel('country');
-        applyFilters();
+        applyFiltersAfterLoading();
         document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
         return;
       }
@@ -857,9 +898,9 @@
     }
 
     function loadNextPage() {
-      if (loading || !hasMore) return;
+      if (loading || !hasMore) return null;
       loading = true;
-      fetch('/api/photos/grid?offset=' + offset + '&limit=' + pageSize)
+      return fetch('/api/photos/grid?offset=' + offset + '&limit=' + pageSize)
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data && data.success && data.photos && data.photos.length) {
@@ -876,6 +917,16 @@
           loading = false; // let the next qualifying scroll retry
         });
     }
+
+    /** Fetch every remaining page up front (ignoring scroll position) so a
+     *  newly-activated filter can match photos anywhere in the full set, not
+     *  just whatever's scrolled into view so far. See applyFiltersAfterLoading(). */
+    function loadAllRemaining() {
+      if (!hasMore) return Promise.resolve();
+      var p = loadNextPage();
+      return p ? p.then(loadAllRemaining) : Promise.resolve();
+    }
+    gridLoadAll = loadAllRemaining;
 
     strip.addEventListener('scroll', function () {
       measure();
@@ -963,9 +1014,9 @@
     }
 
     function loadNextPage() {
-      if (loading || !hasMore) return;
+      if (loading || !hasMore) return null;
       loading = true;
-      fetch('/api/photos/flow?offset=' + offset + '&limit=' + pageSize)
+      return fetch('/api/photos/flow?offset=' + offset + '&limit=' + pageSize)
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data && data.success && data.photos && data.photos.length) {
@@ -980,6 +1031,16 @@
           loading = false; // let the observer retry on the next intersection
         });
     }
+
+    /** Fetch every remaining page up front (ignoring scroll position) so a
+     *  newly-activated filter can match photos anywhere in the full set, not
+     *  just whatever's scrolled into view so far. See applyFiltersAfterLoading(). */
+    function loadAllRemaining() {
+      if (!hasMore) return Promise.resolve();
+      var p = loadNextPage();
+      return p ? p.then(loadAllRemaining) : Promise.resolve();
+    }
+    flowLoadAll = loadAllRemaining;
 
     if (hasMore) observer.observe(sentinel);
   })();

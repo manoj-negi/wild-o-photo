@@ -107,7 +107,13 @@ const mapToSitePhoto = (
     category: (row as any).cat_name || "",
     collection: collectionName,
     country: (row as any).country_name || "",
-    state: row.state || "",
+    // Prefer the countries reference table's state (joined via country_id) — the
+    // Location filter dropdown (/api/countries) is grouped from that same column,
+    // but photos.state is a separate free-text field that a lot of existing rows
+    // never had filled in (NULL), which silently broke the state filter for them
+    // even though they correctly showed up under the country filter. Falling back
+    // to the free-text field only covers legacy rows with no country_id at all.
+    state: (row as any).country_state || row.state || "",
     // detail-panel fields
     about: row.description || "",
     altNote: row.alt_note || "",
@@ -163,7 +169,8 @@ const SELECT_SITE_PHOTOS = `
     cam.model AS cam_model,
     len.brand AS len_brand,
     len.model AS len_model,
-    co.country AS country_name
+    co.country AS country_name,
+    co.state AS country_state
   FROM photos p
   LEFT JOIN categories cat ON p.category_id = cat.id
   LEFT JOIN collections col ON p.collection_id = col.id
