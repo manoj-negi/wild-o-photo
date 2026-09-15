@@ -1,54 +1,55 @@
-<%# views/index.ejs — flow view. expects: title, photos[] { src, alt, slug, cap, category, collection, camera, lens, country, state, year }, cameras[] %>
-<%- include('partials/head', { title: title }) %>
-<%- include('partials/header', { view: 'flow' }) %>
-<%
-  /* Flowbite-style masonry: photos are split round-robin into a fixed set of
-     column groups, each its own CSS grid stacking images top-to-bottom at
-     their natural aspect ratio (no fixed/absolute positioning, no JS layout
-     engine). The outer grid just changes how many of those column groups sit
-     side by side at each breakpoint. */
-  var FLOW_COLUMNS = 4;
-  var flowColumns = [];
-  for (var fc = 0; fc < FLOW_COLUMNS; fc++) flowColumns.push([]);
-  photos.forEach(function (p, i) { flowColumns[i % FLOW_COLUMNS].push({ photo: p, idx: i }); });
-%>
-<main class="pt-[74px] pb-24">
-  <div id="flowCanvas" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 px-4 md:px-9"
-       data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
-       data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
-       data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>"
-       data-columns="<%= FLOW_COLUMNS %>">
-    <% flowColumns.forEach(function (col) { %>
-    <div class="flow-column grid gap-4 md:gap-6 content-start">
-      <% col.forEach(function (item) {
-           var p = item.photo;
-      %>
-      <a href="/photo/<%= p.slug %>" class="photo-item group relative block hover:z-10 focus-visible:z-10"
-         data-index="<%= item.idx %>"
-         data-category="<%= p.category %>"
-         data-collection="<%= p.collection %>"
-         data-camera="<%= p.camera %>"
-         data-lens="<%= p.lens %>"
-         data-country="<%= p.country %>"
-         data-state="<%= p.state %>"
-         data-year="<%= p.year %>">
-        <img src="<%= p.src %>" alt="<%= p.alt %>" class="block w-full h-auto select-none">
-        <span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-          <span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">
-            <svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
-          </span>
-        </span>
-        <span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -left-[12px] w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-        <span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-        <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-        <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-        <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
-      </a>
-      <% }); %>
-    </div>
-    <% }); %>
-  </div>
-  <%# Watched by app.js: crossing near this triggers the next /api/photos/flow fetch. %>
-  <div id="flowSentinel" class="h-px w-full"></div>
-</main>
-<%- include('partials/footer', { cameras: cameras, cameraOpen: false }) %>
+<%# views/index.ejs — flow view. expects: title, photos[] { src, alt, slug, cap, category, collection, camera, lens,
+  country, state, year }, cameras[] %>
+  <%- include('partials/head', { title: title }) %>
+    <%- include('partials/header', { view: 'flow' }) %>
+      <% /* Flowbite-style masonry: photos are split round-robin into a fixed set of column groups, each its own CSS
+        grid stacking images top-to-bottom at their natural aspect ratio (no fixed/absolute positioning, no JS layout
+        engine). The outer grid just changes how many of those column groups sit side by side at each breakpoint. */ var
+        FLOW_COLUMNS=4; var flowColumns=[]; for (var fc=0; fc < FLOW_COLUMNS; fc++) flowColumns.push([]);
+        photos.forEach(function (p, i) { flowColumns[i % FLOW_COLUMNS].push({ photo: p, idx: i }); }); %>
+        <main class="pt-[74px] pb-24">
+          <div id="flowCanvas" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 px-4 md:px-9"
+            data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
+            data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
+            data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>"
+            data-columns="<%= FLOW_COLUMNS %>">
+            <% flowColumns.forEach(function (col) { %>
+              <div class="flow-column grid gap-4 md:gap-6 content-start">
+                <% col.forEach(function (item) { var p=item.photo; %>
+                  <a href="/photo/<%= p.slug %>"
+                    class="photo-item group relative block hover:z-10 focus-visible:z-10 mb-4 md:mb-6"
+                    data-index="<%= item.idx %>" data-category="<%= p.category %>" data-collection="<%= p.collection %>"
+                    data-camera="<%= p.camera %>" data-lens="<%= p.lens %>" data-country="<%= p.country %>"
+                    data-state="<%= p.state %>" data-year="<%= p.year %>">
+                    <img src="<%= p.src %>" alt="<%= p.alt %>" class="block w-full h-auto select-none">
+                    <span aria-hidden="true"
+                      class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <span
+                        class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">
+                        <svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="1.4" stroke-linecap="round">
+                          <path d="M12 5v14M5 12h14"></path>
+                        </svg>
+                      </span>
+                    </span>
+                    <span aria-hidden="true"
+                      class="pointer-events-none absolute -top-[12px] -left-[12px] w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <span aria-hidden="true"
+                      class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <span aria-hidden="true"
+                      class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <span aria-hidden="true"
+                      class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
+                    <span
+                      class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <%= p.cap %>
+                    </span>
+                  </a>
+                  <% }); %>
+              </div>
+              <% }); %>
+          </div>
+          <%# Watched by app.js: crossing near this triggers the next /api/photos/flow fetch. %>
+            <div id="flowSentinel" class="h-px w-full"></div>
+        </main>
+        <%- include('partials/footer', { cameras: cameras, cameraOpen: false }) %>

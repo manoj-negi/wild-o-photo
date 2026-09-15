@@ -884,7 +884,7 @@
         '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' + esc(p.cap) + '</span>';
+        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 whitespace-nowrap text-[15px] text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">' + esc(p.cap) + '</span>';
       return a;
     }
 
@@ -975,7 +975,7 @@
     function buildPhotoItem(p) {
       var a = document.createElement('a');
       a.href = '/photo/' + encodeURIComponent(p.slug);
-      a.className = 'photo-item group relative block hover:z-10 focus-visible:z-10';
+      a.className = 'photo-item group relative block hover:z-10 focus-visible:z-10 mb-10 md:mb-12';
       a.setAttribute('data-index', nextIndex++);
       a.setAttribute('data-category', p.category || '');
       a.setAttribute('data-collection', p.collection || '');
