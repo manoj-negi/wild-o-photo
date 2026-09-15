@@ -33,9 +33,23 @@
             <section class="card p-5">
               <div class="kicker mb-3.5">Core details</div>
               <div class="grid grid-cols-2 gap-3.5">
-                <label class="label">Hover caption <span class="text-red-500">*</span>
-                  <input class="field mt-1.5" name="cap" value="<%= photo.cap %>" placeholder="Morning Patrol" required>
-                </label>
+                <label class="label">
+                    <div class="flex items-center justify-between">
+                       <span>
+                            Hover caption <span class="text-red-500">*</span>
+                           </span>
+                            <span class="text-[11px] text-mute">Maximum 50 characters</span>
+                              </div>
+
+                      <input
+                      class="field mt-1.5"
+                       name="cap"
+                        value="<%= photo.cap %>"
+                          placeholder="Morning Patrol"
+                         maxlength="50"
+                           required
+                                   >
+                                   </label>
                 <label class="label">Slug <span class="text-red-500">*</span>
                   <input class="field mt-1.5" name="slug" value="<%= photo.slug %>" placeholder="morning-patrol" required>
                 </label>

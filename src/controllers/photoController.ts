@@ -38,6 +38,8 @@ interface DBPhotoRow extends RowDataPacket {
 const slugify = (s: string): string =>
   String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
+const MAX_HOVER_CAPTION_LENGTH = 50;
+
 const asArray = (v: unknown): string[] =>
   v === undefined ? [] : Array.isArray(v) ? (v as string[]) : [v as string];
 
@@ -274,6 +276,10 @@ const getEditPhotoForm = async (req: Request, res: Response) => {
 
 const createPhoto = async (req: Request, res: Response) => {
   try {
+
+
+    
+
     let s3Key = "";
     let photoUrl = req.body.src || "";
 
@@ -295,8 +301,15 @@ const createPhoto = async (req: Request, res: Response) => {
       photoUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${s3Key}`;
     }
 
-    const cap = (req.body.cap || "").trim();
-    const slug = slugify(req.body.slug || cap);
+  const cap = String(req.body.cap || "").trim();
+
+if (cap.length > MAX_HOVER_CAPTION_LENGTH) {
+  return res.status(400).send(
+    `Hover caption must not exceed ${MAX_HOVER_CAPTION_LENGTH} characters.`
+  );
+}
+
+const slug = slugify(req.body.slug || cap);
     const title = (req.body.title || cap).trim();
     const ref = (req.body.ref || "").trim();
     const category_id = req.body.category_id ? parseInt(req.body.category_id, 10) : null;
@@ -364,8 +377,15 @@ const updatePhoto = async (req: Request, res: Response) => {
       photoUrl = `https://${bucketName}.s3.${region}.amazonaws.com/${s3Key}`;
     }
 
-    const cap = (req.body.cap || "").trim();
-    const slug = slugify(req.body.slug || cap) || existing.slug;
+  const cap = String(req.body.cap || "").trim();
+
+if (cap.length > MAX_HOVER_CAPTION_LENGTH) {
+  return res.status(400).send(
+    `Hover caption must not exceed ${MAX_HOVER_CAPTION_LENGTH} characters.`
+  );
+}
+
+const slug = slugify(req.body.slug || cap) || existing.slug;
     const title = (req.body.title || cap).trim();
     const ref = (req.body.ref || "").trim();
     const category_id = req.body.category_id ? parseInt(req.body.category_id, 10) : null;
