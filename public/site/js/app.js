@@ -801,13 +801,13 @@
     b.addEventListener('click', function () {
       document.querySelectorAll('[data-take]').forEach(function (o) {
         var on = o === b;
-        o.classList.toggle('bg-ink', on);
-        o.classList.toggle('text-white', on);
-        o.classList.toggle('dark:bg-white', on);
-        o.classList.toggle('dark:text-ink', on);
-        o.classList.toggle('font-medium', on);
-        o.classList.toggle('text-ink/45', !on);
-        o.classList.toggle('dark:text-white/45', !on);
+        if (on) {
+          o.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'font-semibold');
+          o.classList.remove('text-neutral-400', 'dark:text-neutral-500', 'hover:text-white', 'dark:hover:text-black', 'font-medium');
+        } else {
+          o.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'font-semibold');
+          o.classList.add('text-neutral-400', 'dark:text-neutral-500', 'hover:text-white', 'dark:hover:text-black', 'font-medium');
+        }
       });
     });
   });
