@@ -1,5 +1,7 @@
 # Of Wild & Walls
 
+# test
+
 Photography portfolio, merged with its admin panel into one Express + TypeScript app.
 
 - **`/`** — Flow view (photos scattered on a scrolling canvas)
