@@ -106,6 +106,36 @@
     year:       'Year'
   };
 
+  /** Flow view only: photos are pre-split round-robin into N column groups at
+   *  full-set order, so filtering down to a subset (hiding the rest in place)
+   *  can leave columns badly unbalanced — a column whose photos mostly got
+   *  filtered out ends up much shorter than its neighbors. Re-sort the
+   *  currently-visible items by their original order and round-robin them
+   *  fresh across the columns so the masonry stays balanced under any filter.
+   *  Re-parenting existing elements (not rebuilding them) keeps their event
+   *  listeners and hover state intact. Run unconditionally so clearing a
+   *  filter re-balances back to the full set too. */
+  function reflowFlowColumns() {
+    var canvas = document.getElementById('flowCanvas');
+    if (!canvas) return;
+    var columnEls = Array.prototype.slice.call(canvas.querySelectorAll('.flow-column'));
+    if (!columnEls.length) return;
+
+    var items = Array.prototype.slice.call(canvas.querySelectorAll('.photo-item'));
+    items.sort(function (a, b) {
+      return (parseInt(a.getAttribute('data-index'), 10) || 0) - (parseInt(b.getAttribute('data-index'), 10) || 0);
+    });
+    var visible = items.filter(function (el) { return el.style.display !== 'none'; });
+    var hidden  = items.filter(function (el) { return el.style.display === 'none'; });
+
+    var frags = columnEls.map(function () { return document.createDocumentFragment(); });
+    visible.forEach(function (el, i) { frags[i % columnEls.length].appendChild(el); });
+    // Hidden items don't affect layout (display:none), but keep them parented
+    // somewhere so a later filter change can find and re-show them.
+    hidden.forEach(function (el, i) { frags[i % columnEls.length].appendChild(el); });
+    columnEls.forEach(function (colEl, i) { colEl.appendChild(frags[i]); });
+  }
+
   function applyFilters() {
     var photos = document.querySelectorAll('.photo-item');
     photos.forEach(function (el) {
@@ -130,11 +160,14 @@
           if (photoVal !== val.toLowerCase()) visible = false;
         }
       });
-      // Both Flow (masonry columns) and Grid (flex strip) lay items out in normal
-      // document flow, so hiding an item with display:none is enough — the rest of
-      // its column/row closes the gap on its own; no manual repacking needed.
+      // Grid's flex strip lays items out in normal document flow, so hiding an
+      // item with display:none is enough there — the rest of the row closes
+      // the gap on its own. Flow's masonry columns additionally need
+      // rebalancing (see reflowFlowColumns) since hiding in place can leave
+      // one column much shorter than the others.
       el.style.display = visible ? '' : 'none';
     });
+    reflowFlowColumns();
   }
 
   function setFilter(type, value) {
@@ -870,10 +903,10 @@
   /* ── Flow view — infinite scroll pagination ────────────────────────
    * The server renders the first page already laid out into N column groups
    * (see index.ejs). As the visitor nears #flowSentinel, fetch the next page
-   * of real photos from /api/photos/flow and round-robin each one into the
-   * next column, continuing the exact sequence the server started — the
-   * columns are plain CSS grids, so each new child just stacks at its
-   * natural height with no layout math needed. */
+   * of real photos from /api/photos/flow, tag each with the next data-index
+   * in sequence, and hand off to reflowFlowColumns() (via applyFilters) to
+   * slot them into the columns — same balancing logic a filter change uses,
+   * so new photos land correctly whether or not a filter is currently active. */
   (function () {
     var canvas = document.getElementById('flowCanvas');
     var sentinel = document.getElementById('flowSentinel');
@@ -885,13 +918,14 @@
     var pageSize = parseInt(canvas.getAttribute('data-page-size'), 10) || 30;
     var offset = parseInt(canvas.getAttribute('data-offset'), 10) || 0;
     var hasMore = canvas.getAttribute('data-has-more') === '1';
-    var nextColumn = parseInt(canvas.getAttribute('data-next-column'), 10) || 0;
+    var nextIndex = offset;
     var loading = false;
 
     function buildPhotoItem(p) {
       var a = document.createElement('a');
       a.href = '/photo/' + encodeURIComponent(p.slug);
       a.className = 'photo-item group relative block hover:z-10 focus-visible:z-10';
+      a.setAttribute('data-index', nextIndex++);
       a.setAttribute('data-category', p.category || '');
       a.setAttribute('data-collection', p.collection || '');
       a.setAttribute('data-camera', p.camera || '');
@@ -919,9 +953,11 @@
     }, { rootMargin: '800px 0px' });
 
     function appendPhotos(newPhotos) {
+      // Placement doesn't matter here — applyFilters()'s reflowFlowColumns()
+      // immediately re-sorts every item by data-index and redistributes them
+      // evenly, so just get the new nodes into the DOM.
       newPhotos.forEach(function (p) {
-        columnEls[nextColumn].appendChild(buildPhotoItem(p));
-        nextColumn = (nextColumn + 1) % columnEls.length;
+        columnEls[0].appendChild(buildPhotoItem(p));
       });
       applyFilters();
     }

@@ -10,19 +10,21 @@
   var FLOW_COLUMNS = 4;
   var flowColumns = [];
   for (var fc = 0; fc < FLOW_COLUMNS; fc++) flowColumns.push([]);
-  photos.forEach(function (p, i) { flowColumns[i % FLOW_COLUMNS].push(p); });
+  photos.forEach(function (p, i) { flowColumns[i % FLOW_COLUMNS].push({ photo: p, idx: i }); });
 %>
 <main class="pt-[74px] pb-24">
   <div id="flowCanvas" class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 px-4 md:px-9"
        data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
        data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
        data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>"
-       data-columns="<%= FLOW_COLUMNS %>"
-       data-next-column="<%= photos.length % FLOW_COLUMNS %>">
+       data-columns="<%= FLOW_COLUMNS %>">
     <% flowColumns.forEach(function (col) { %>
     <div class="flow-column grid gap-4 md:gap-6 content-start">
-      <% col.forEach(function (p) { %>
+      <% col.forEach(function (item) {
+           var p = item.photo;
+      %>
       <a href="/photo/<%= p.slug %>" class="photo-item group relative block hover:z-10 focus-visible:z-10"
+         data-index="<%= item.idx %>"
          data-category="<%= p.category %>"
          data-collection="<%= p.collection %>"
          data-camera="<%= p.camera %>"
