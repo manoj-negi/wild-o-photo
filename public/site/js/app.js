@@ -5,11 +5,75 @@
 
   if (localStorage.getItem(KEY) === 'dark') root.classList.add('dark');
 
-  var t = document.getElementById('themeToggle');
-  if (t) t.addEventListener('click', function () {
-    root.classList.toggle('dark');
-    localStorage.setItem(KEY, root.classList.contains('dark') ? 'dark' : 'light');
+  // Desktop header and the mobile nav panel each have their own copy of this
+  // button (same markup, different layout context) — wire both to the same toggle.
+  document.querySelectorAll('.js-theme-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      root.classList.toggle('dark');
+      localStorage.setItem(KEY, root.classList.contains('dark') ? 'dark' : 'light');
+    });
   });
+
+  /* ── Mobile / tablet header hamburger ──────────────────────────────
+   * Below md the header's Dark Mode/Flow/Grid controls collapse into
+   * #navPanel, toggled by #navToggle (see partials/header.ejs). */
+  (function () {
+    var toggle = document.getElementById('navToggle');
+    var panel  = document.getElementById('navPanel');
+    var iconOpen  = document.getElementById('navIconOpen');
+    var iconClose = document.getElementById('navIconClose');
+    if (!toggle || !panel) return;
+
+    function setOpen(open) {
+      panel.classList.toggle('hidden', !open);
+      if (iconOpen)  iconOpen.classList.toggle('hidden', open);
+      if (iconClose) iconClose.classList.toggle('hidden', !open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(panel.classList.contains('hidden'));
+    });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+    // A view link inside the panel navigates away (no need to close), but
+    // toggling Dark Mode doesn't — close the panel after that one so it
+    // doesn't sit open over the page.
+    panel.querySelector('.js-theme-toggle').addEventListener('click', function () {
+      setOpen(false);
+    });
+  })();
+
+  /* ── Mobile / tablet filter bar ─────────────────────────────────────
+   * Below md the row of filter pills collapses into #filtersGroup, toggled
+   * by #filtersToggle (see partials/footer.ejs). Each pill's own dropdown
+   * (category/collection/camera/lens/country/year) still opens/closes via
+   * the existing wirePopup() logic below — this only shows/hides the group
+   * of pills itself. */
+  (function () {
+    var toggle = document.getElementById('filtersToggle');
+    var group  = document.getElementById('filtersGroup');
+    if (!toggle || !group) return;
+
+    function setOpen(open) {
+      group.classList.toggle('hidden', !open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(group.classList.contains('hidden'));
+    });
+    group.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  })();
 
   /* ── HTML helpers ────────────────────────────────────────────────── */
 

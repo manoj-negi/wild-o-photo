@@ -22,6 +22,15 @@
     };
   </script>
   <style>
+    /* `vw` units include the scrollbar's own width on platforms with a reserved
+       (non-overlay) scrollbar, so any fixed/absolute element sized or centered
+       with vw (the mobile nav/filter panels, masonry hover captions, Flow's
+       column positions) can end up a few px wider than the actually-visible
+       viewport. That's harmless internally, but left unchecked it makes the
+       whole page horizontally scrollable on mobile/tablet just to reveal that
+       sliver — clip it here instead. Doesn't affect #gridStrip's own intentional
+       horizontal scroll, which is a separate nested overflow-x:auto container. */
+    html, body { overflow-x: hidden; }
     html { -webkit-font-smoothing: antialiased; }
     ::selection { background: #141414; color: #fff; }
     :focus-visible { outline: 2px solid #141414; outline-offset: 3px; }
