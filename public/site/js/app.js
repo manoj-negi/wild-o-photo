@@ -835,6 +835,13 @@
   if (panel && pBtn) {
     var plusIcon  = document.getElementById('detailPlus');
     var closeIcon = document.getElementById('detailClose');
+    // Below md the panel is a near-full-width overlay (w-[min(360px,92vw)]),
+    // not a slim sidebar, so it should sit on top of the stage rather than
+    // shove it aside — pushing a 390px-wide stage over by hundreds of px would
+    // just shunt the photo and BACK button off-screen. Only shift the stage's
+    // padding at md+, where the fixed-pixel side-panel layout is what the
+    // stage's own md:pl-[180px] md:pr-[120px] classes were designed around.
+    var isDesktopLayout = function () { return window.matchMedia('(min-width: 768px)').matches; };
     pBtn.addEventListener('click', function () {
       var isCurrentlyClosed = panel.classList.contains('translate-x-full');
       if (isCurrentlyClosed) {
@@ -844,7 +851,7 @@
         if (closeIcon) closeIcon.classList.remove('hidden');
         pBtn.classList.remove('bg-white', 'dark:bg-neutral-900', 'text-neutral-800', 'dark:text-white', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-800');
         pBtn.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'hover:bg-neutral-900', 'dark:hover:bg-neutral-100');
-        if (stage) stage.style.paddingRight = '380px';
+        if (stage && isDesktopLayout()) stage.style.paddingRight = '380px';
       } else {
         // Close drawer
         panel.classList.add('translate-x-full');
@@ -852,7 +859,7 @@
         if (closeIcon) closeIcon.classList.add('hidden');
         pBtn.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'hover:bg-neutral-900', 'dark:hover:bg-neutral-100');
         pBtn.classList.add('bg-white', 'dark:bg-neutral-900', 'text-neutral-800', 'dark:text-white', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-800');
-        if (stage) stage.style.paddingRight = '120px';
+        if (stage && isDesktopLayout()) stage.style.paddingRight = '120px';
       }
     });
     document.addEventListener('keydown', function (e) {
