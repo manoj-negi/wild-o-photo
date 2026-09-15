@@ -4,3 +4,15 @@
     <span class="text-base font-semibold tracking-tight">OF Wild & Walls</span>
   </a>
 </header>
+<% if (typeof flash !== "undefined" && flash) { %>
+  <div id="flash-banner" class="flex items-center justify-between gap-4 border-b border-emerald-200 bg-emerald-50 px-6 py-2.5 text-[13px] font-medium text-emerald-700">
+    <span>&#10003; <%= flash %></span>
+    <button type="button" onclick="this.parentElement.remove()" class="text-emerald-600 hover:text-emerald-900">&times;</button>
+  </div>
+  <script>
+    setTimeout(function () {
+      var el = document.getElementById("flash-banner");
+      if (el) el.remove();
+    }, 4000);
+  </script>
+<% } %>
