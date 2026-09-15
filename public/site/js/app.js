@@ -106,52 +106,7 @@
     year:       'Year'
   };
 
-  /** Flow view only: the masonry items are absolutely positioned at fixed vw
-   *  coordinates, so simply hiding the ones a filter excludes (as Grid's flex
-   *  layout can) leaves their reserved space behind — gaps between the
-   *  remaining photos. Re-running the same column-fill algorithm the server
-   *  (and the infinite-scroll loader) use, over just the currently-visible
-   *  items, repacks them with no gaps. Run unconditionally (not just when a
-   *  filter is active) so clearing a filter repacks back to the full set too. */
-  function reflowFlowLayout(canvas, visibleItems) {
-    var COLUMNS = window.__flowColumns || [];
-    var COLUMN_GAP = window.__flowColumnGap || 3;
-    if (!COLUMNS.length) return;
-
-    var columnBottoms = COLUMNS.map(function (c) { return c.top - COLUMN_GAP; });
-    var columnCounts = COLUMNS.map(function () { return 0; });
-
-    function nextAutoPos() {
-      var idx = 0;
-      for (var i = 1; i < columnBottoms.length; i++) {
-        if (columnBottoms[i] < columnBottoms[idx]) idx = i;
-      }
-      var col = COLUMNS[idx];
-      var t = columnBottoms[idx] + COLUMN_GAP;
-      var h = col.shapes[columnCounts[idx] % col.shapes.length];
-      columnCounts[idx]++;
-      columnBottoms[idx] = t + h;
-      return { l: col.l, t: t, w: col.w, h: h };
-    }
-
-    visibleItems.forEach(function (el) {
-      var pos = nextAutoPos();
-      el.style.left = pos.l + 'vw';
-      el.style.top = pos.t + 'vw';
-      el.style.width = pos.w + 'vw';
-      el.style.height = pos.h + 'vw';
-      el.style.display = '';
-    });
-
-    var maxBottom = (columnBottoms.length ? Math.max.apply(null, columnBottoms) : 0) + 4;
-    canvas.style.height = maxBottom + 'vw';
-    var sentinel = document.getElementById('flowSentinel');
-    if (sentinel) sentinel.style.top = maxBottom + 'vw';
-  }
-
   function applyFilters() {
-    var flowCanvas = document.getElementById('flowCanvas');
-    var visibleFlowItems = [];
     var photos = document.querySelectorAll('.photo-item');
     photos.forEach(function (el) {
       var visible = true;
@@ -175,20 +130,11 @@
           if (photoVal !== val.toLowerCase()) visible = false;
         }
       });
-      if (flowCanvas && el.parentNode === flowCanvas) {
-        // display:none (not just opacity/visibility) so a filtered-out item — which
-        // keeps its old absolute position until it's shown again — can't inflate the
-        // page's scrollable area beyond what reflowFlowLayout() just sized the canvas to.
-        if (visible) {
-          visibleFlowItems.push(el);
-        } else {
-          el.style.display = 'none';
-        }
-      } else {
-        el.style.display = visible ? '' : 'none';
-      }
+      // Both Flow (masonry columns) and Grid (flex strip) lay items out in normal
+      // document flow, so hiding an item with display:none is enough — the rest of
+      // its column/row closes the gap on its own; no manual repacking needed.
+      el.style.display = visible ? '' : 'none';
     });
-    if (flowCanvas) reflowFlowLayout(flowCanvas, visibleFlowItems);
   }
 
   function setFilter(type, value) {
@@ -922,48 +868,30 @@
   })();
 
   /* ── Flow view — infinite scroll pagination ────────────────────────
-   * The server renders the first page already laid out (see index.ejs). As the
-   * visitor nears the bottom of #flowCanvas, fetch the next page of real photos
-   * from /api/photos/flow, position each one (continuing the same auto-layout
-   * cycle the server used) and grow the canvas to fit. */
+   * The server renders the first page already laid out into N column groups
+   * (see index.ejs). As the visitor nears #flowSentinel, fetch the next page
+   * of real photos from /api/photos/flow and round-robin each one into the
+   * next column, continuing the exact sequence the server started — the
+   * columns are plain CSS grids, so each new child just stacks at its
+   * natural height with no layout math needed. */
   (function () {
     var canvas = document.getElementById('flowCanvas');
-    var stateEl = document.getElementById('flowState');
     var sentinel = document.getElementById('flowSentinel');
-    if (!canvas || !stateEl || !sentinel) return;
+    if (!canvas || !sentinel) return;
 
-    // Must match index.ejs's masonry engine exactly: each column keeps stacking from
-    // wherever the server (or the previous page's fetch) left its bottom edge, so a
-    // freshly-loaded page continues the same 5 columns instead of restarting them.
-    var COLUMNS = window.__flowColumns || [];
-    var COLUMN_GAP = window.__flowColumnGap || 3;
+    var columnEls = Array.prototype.slice.call(canvas.querySelectorAll('.flow-column'));
+    if (!columnEls.length) return;
+
     var pageSize = parseInt(canvas.getAttribute('data-page-size'), 10) || 30;
     var offset = parseInt(canvas.getAttribute('data-offset'), 10) || 0;
     var hasMore = canvas.getAttribute('data-has-more') === '1';
-    var columnBottoms = (stateEl.getAttribute('data-column-bottoms') || '')
-      .split(',').map(parseFloat);
-    var columnCounts = (stateEl.getAttribute('data-column-counts') || '')
-      .split(',').map(function (n) { return parseInt(n, 10) || 0; });
-    var maxBottom = Math.max.apply(null, columnBottoms) + 4;
+    var nextColumn = parseInt(canvas.getAttribute('data-next-column'), 10) || 0;
     var loading = false;
 
-    function nextAutoPos() {
-      var idx = 0;
-      for (var i = 1; i < columnBottoms.length; i++) {
-        if (columnBottoms[i] < columnBottoms[idx]) idx = i;
-      }
-      var col = COLUMNS[idx];
-      var t = columnBottoms[idx] + COLUMN_GAP;
-      var h = col.shapes[columnCounts[idx] % col.shapes.length];
-      columnCounts[idx]++;
-      columnBottoms[idx] = t + h;
-      return { l: col.l, t: t, w: col.w, h: h };
-    }
-
-    function buildPhotoItem(p, pos) {
+    function buildPhotoItem(p) {
       var a = document.createElement('a');
       a.href = '/photo/' + encodeURIComponent(p.slug);
-      a.className = 'photo-item group absolute block';
+      a.className = 'photo-item group relative block hover:z-10 focus-visible:z-10';
       a.setAttribute('data-category', p.category || '');
       a.setAttribute('data-collection', p.collection || '');
       a.setAttribute('data-camera', p.camera || '');
@@ -971,14 +899,8 @@
       a.setAttribute('data-country', p.country || '');
       a.setAttribute('data-state', p.state || '');
       a.setAttribute('data-year', p.year || '');
-      a.style.left = pos.l + 'vw';
-      a.style.top = pos.t + 'vw';
-      a.style.width = pos.w + 'vw';
-      a.style.height = pos.h + 'vw';
       a.innerHTML =
-        '<span class="block w-full h-full overflow-hidden">' +
-          '<img src="' + escAttr(p.src) + '" alt="' + escAttr(p.alt) + '" loading="lazy" class="w-full h-full object-cover select-none">' +
-        '</span>' +
+        '<img src="' + escAttr(p.src) + '" alt="' + escAttr(p.alt) + '" class="block w-full h-auto select-none">' +
         '<span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
           '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
             '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
@@ -997,14 +919,10 @@
     }, { rootMargin: '800px 0px' });
 
     function appendPhotos(newPhotos) {
-      var frag = document.createDocumentFragment();
       newPhotos.forEach(function (p) {
-        frag.appendChild(buildPhotoItem(p, nextAutoPos()));
+        columnEls[nextColumn].appendChild(buildPhotoItem(p));
+        nextColumn = (nextColumn + 1) % columnEls.length;
       });
-      maxBottom = Math.max.apply(null, columnBottoms) + 4;
-      canvas.insertBefore(frag, stateEl);
-      canvas.style.height = maxBottom + 'vw';
-      sentinel.style.top = maxBottom + 'vw';
       applyFilters();
     }
 
