@@ -321,7 +321,16 @@ const getPhotoDetail = async (req: Request, res: Response) => {
       if (filterCollection && (r.col_name || "").trim().toLowerCase() !== filterCollection) return false;
       if (filterCamera && formatCameraName(r.cam_brand, r.cam_model, "").trim().toLowerCase() !== filterCamera) return false;
       if (filterLens && formatLensName(r.len_brand, r.len_model, "").trim().toLowerCase() !== filterLens) return false;
-      if (filterCountry && (r.state || "").trim().toLowerCase() !== filterCountry) return false;
+      if (filterCountry) {
+        if (filterCountry.startsWith("country::")) {
+          if ((r.country_name || "").trim().toLowerCase() !== filterCountry.replace("country::", "")) return false;
+        } else if (filterCountry.startsWith("state::")) {
+          if ((r.country_state || "").trim().toLowerCase() !== filterCountry.replace("state::", "")) return false;
+        } else {
+          const target = filterCountry;
+          if ((r.country_name || "").trim().toLowerCase() !== target && (r.country_state || "").trim().toLowerCase() !== target) return false;
+        }
+      }
       if (filterYear && String(r.date || "").slice(0, 4) !== filterYear) return false;
       return true;
     };
