@@ -234,6 +234,33 @@
     year: null,
   };
 
+  (function initFiltersFromURL() {
+    var qs = window.location.search.substring(1);
+    if (!qs) return;
+    var pairs = qs.split("&");
+    var hasActive = false;
+    pairs.forEach(function (pair) {
+      var kv = pair.split("=");
+      if (kv.length === 2) {
+        var key = decodeURIComponent(kv[0]);
+        var val = decodeURIComponent(kv[1]);
+        if (activeFilters.hasOwnProperty(key)) {
+          activeFilters[key] = val;
+          hasActive = true;
+        }
+      }
+    });
+
+    if (hasActive) {
+      document.addEventListener("DOMContentLoaded", function () {
+        Object.keys(activeFilters).forEach(function (key) {
+          if (activeFilters[key]) updateButtonLabel(key);
+        });
+        applyFiltersAfterLoading();
+      });
+    }
+  })();
+
   var dataAttrMap = {
     category: "category",
     collection: "collection",
@@ -362,6 +389,7 @@
 
     updateButtonLabel(type);
     applyFiltersAfterLoading();
+    updateURLQuery();
   }
 
   function clearFilter(type) {
@@ -369,6 +397,7 @@
 
     updateButtonLabel(type);
     applyFiltersAfterLoading();
+    updateURLQuery();
   }
 
   function buildFilterQueryString() {
@@ -383,6 +412,15 @@
     });
 
     return parts.join("&");
+  }
+
+  function updateURLQuery() {
+    var qs = buildFilterQueryString();
+    var newUrl = window.location.pathname;
+    if (qs) {
+      newUrl += "?" + qs;
+    }
+    history.replaceState(null, "", newUrl);
   }
 
   /*
@@ -438,6 +476,7 @@
   }
 
   /* ── Generic popup wiring ─────────────────────────────────────────── */
+
 
   function wirePopup(menuEl, triggerBtn, filterType) {
     if (!menuEl || !triggerBtn) return;
@@ -916,6 +955,7 @@
       });
 
       applyFiltersAfterLoading();
+      updateURLQuery();
     });
   }
 
