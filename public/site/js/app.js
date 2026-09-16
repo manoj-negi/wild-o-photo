@@ -408,7 +408,6 @@
 
   function updateButtonLabel(type) {
     var btnId = type === "collection" ? "collectionsBtn" : type + "Btn";
-
     var btn = document.getElementById(btnId);
 
     if (!btn) return;
@@ -426,14 +425,14 @@
     if (active) {
       var short = active.length > 16 ? active.substring(0, 14) + "…" : active;
 
-      labelEl.textContent = short + " ×";
+      labelEl.innerHTML = defaultLabels[type] + ' <span class="ml-1.5 px-2 py-0.5 rounded-[6px] bg-black/5 dark:bg-white/10 text-[13px] text-ink dark:text-white font-medium">' + esc(short) + '</span>';
 
-      btn.classList.add("text-[#c8a03c]");
-      btn.classList.remove("text-ink/75", "dark:text-white/75");
+      btn.classList.add("text-ink", "dark:text-white");
+      btn.classList.remove("text-ink/75", "dark:text-white/75", "text-[#c8a03c]");
     } else {
       labelEl.textContent = defaultLabels[type];
 
-      btn.classList.remove("text-[#c8a03c]");
+      btn.classList.remove("text-ink", "dark:text-white", "text-[#c8a03c]");
       btn.classList.add("text-ink/75", "dark:text-white/75");
     }
   }
