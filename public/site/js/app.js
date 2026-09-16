@@ -5,11 +5,75 @@
 
   if (localStorage.getItem(KEY) === 'dark') root.classList.add('dark');
 
-  var t = document.getElementById('themeToggle');
-  if (t) t.addEventListener('click', function () {
-    root.classList.toggle('dark');
-    localStorage.setItem(KEY, root.classList.contains('dark') ? 'dark' : 'light');
+  // Desktop header and the mobile nav panel each have their own copy of this
+  // button (same markup, different layout context) — wire both to the same toggle.
+  document.querySelectorAll('.js-theme-toggle').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      root.classList.toggle('dark');
+      localStorage.setItem(KEY, root.classList.contains('dark') ? 'dark' : 'light');
+    });
   });
+
+  /* ── Mobile / tablet header hamburger ──────────────────────────────
+   * Below md the header's Dark Mode/Flow/Grid controls collapse into
+   * #navPanel, toggled by #navToggle (see partials/header.ejs). */
+  (function () {
+    var toggle = document.getElementById('navToggle');
+    var panel  = document.getElementById('navPanel');
+    var iconOpen  = document.getElementById('navIconOpen');
+    var iconClose = document.getElementById('navIconClose');
+    if (!toggle || !panel) return;
+
+    function setOpen(open) {
+      panel.classList.toggle('hidden', !open);
+      if (iconOpen)  iconOpen.classList.toggle('hidden', open);
+      if (iconClose) iconClose.classList.toggle('hidden', !open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(panel.classList.contains('hidden'));
+    });
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+    // A view link inside the panel navigates away (no need to close), but
+    // toggling Dark Mode doesn't — close the panel after that one so it
+    // doesn't sit open over the page.
+    panel.querySelector('.js-theme-toggle').addEventListener('click', function () {
+      setOpen(false);
+    });
+  })();
+
+  /* ── Mobile / tablet filter bar ─────────────────────────────────────
+   * Below md the row of filter pills collapses into #filtersGroup, toggled
+   * by #filtersToggle (see partials/footer.ejs). Each pill's own dropdown
+   * (category/collection/camera/lens/country/year) still opens/closes via
+   * the existing wirePopup() logic below — this only shows/hides the group
+   * of pills itself. */
+  (function () {
+    var toggle = document.getElementById('filtersToggle');
+    var group  = document.getElementById('filtersGroup');
+    if (!toggle || !group) return;
+
+    function setOpen(open) {
+      group.classList.toggle('hidden', !open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      setOpen(group.classList.contains('hidden'));
+    });
+    group.addEventListener('click', function (e) { e.stopPropagation(); });
+    document.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+  })();
 
   /* ── HTML helpers ────────────────────────────────────────────────── */
 
@@ -106,52 +170,60 @@
     year:       'Year'
   };
 
-  /** Flow view only: the masonry items are absolutely positioned at fixed vw
-   *  coordinates, so simply hiding the ones a filter excludes (as Grid's flex
-   *  layout can) leaves their reserved space behind — gaps between the
-   *  remaining photos. Re-running the same column-fill algorithm the server
-   *  (and the infinite-scroll loader) use, over just the currently-visible
-   *  items, repacks them with no gaps. Run unconditionally (not just when a
-   *  filter is active) so clearing a filter repacks back to the full set too. */
-  function reflowFlowLayout(canvas, visibleItems) {
-    var COLUMNS = window.__flowColumns || [];
-    var COLUMN_GAP = window.__flowColumnGap || 3;
-    if (!COLUMNS.length) return;
+  /** Filtering only ever looks at .photo-item elements already in the DOM, but
+   *  both views load photos incrementally (infinite scroll) — so a filter can
+   *  match photos that haven't been fetched yet and wrongly show zero results
+   *  (e.g. picking a country whose photos are all past the first page). Each
+   *  view's infinite-scroll IIFE below assigns its own "fetch every remaining
+   *  page" function here; whichever view is active wires itself in, the other
+   *  stays a no-op. */
+  var flowLoadAll = null;
+  var gridLoadAll = null;
 
-    var columnBottoms = COLUMNS.map(function (c) { return c.top - COLUMN_GAP; });
-    var columnCounts = COLUMNS.map(function () { return 0; });
+  /** Run before applying a newly-activated filter so it can see the full photo
+   *  set regardless of scroll position. Skipped when no filter is active (i.e.
+   *  clearing back to the unfiltered view) so normal lazy infinite scroll keeps
+   *  working rather than eagerly fetching everything on every clear. */
+  function applyFiltersAfterLoading() {
+    var hasActive = Object.keys(activeFilters).some(function (k) { return !!activeFilters[k]; });
+    if (!hasActive) { applyFilters(); return; }
+    var tasks = [];
+    if (flowLoadAll) tasks.push(flowLoadAll());
+    if (gridLoadAll) tasks.push(gridLoadAll());
+    Promise.all(tasks).then(applyFilters);
+  }
 
-    function nextAutoPos() {
-      var idx = 0;
-      for (var i = 1; i < columnBottoms.length; i++) {
-        if (columnBottoms[i] < columnBottoms[idx]) idx = i;
-      }
-      var col = COLUMNS[idx];
-      var t = columnBottoms[idx] + COLUMN_GAP;
-      var h = col.shapes[columnCounts[idx] % col.shapes.length];
-      columnCounts[idx]++;
-      columnBottoms[idx] = t + h;
-      return { l: col.l, t: t, w: col.w, h: h };
-    }
+  /** Flow view only: photos are pre-split round-robin into N column groups at
+   *  full-set order, so filtering down to a subset (hiding the rest in place)
+   *  can leave columns badly unbalanced — a column whose photos mostly got
+   *  filtered out ends up much shorter than its neighbors. Re-sort the
+   *  currently-visible items by their original order and round-robin them
+   *  fresh across the columns so the masonry stays balanced under any filter.
+   *  Re-parenting existing elements (not rebuilding them) keeps their event
+   *  listeners and hover state intact. Run unconditionally so clearing a
+   *  filter re-balances back to the full set too. */
+  function reflowFlowColumns() {
+    var canvas = document.getElementById('flowCanvas');
+    if (!canvas) return;
+    var columnEls = Array.prototype.slice.call(canvas.querySelectorAll('.flow-column'));
+    if (!columnEls.length) return;
 
-    visibleItems.forEach(function (el) {
-      var pos = nextAutoPos();
-      el.style.left = pos.l + 'vw';
-      el.style.top = pos.t + 'vw';
-      el.style.width = pos.w + 'vw';
-      el.style.height = pos.h + 'vw';
-      el.style.display = '';
+    var items = Array.prototype.slice.call(canvas.querySelectorAll('.photo-item'));
+    items.sort(function (a, b) {
+      return (parseInt(a.getAttribute('data-index'), 10) || 0) - (parseInt(b.getAttribute('data-index'), 10) || 0);
     });
+    var visible = items.filter(function (el) { return el.style.display !== 'none'; });
+    var hidden  = items.filter(function (el) { return el.style.display === 'none'; });
 
-    var maxBottom = (columnBottoms.length ? Math.max.apply(null, columnBottoms) : 0) + 4;
-    canvas.style.height = maxBottom + 'vw';
-    var sentinel = document.getElementById('flowSentinel');
-    if (sentinel) sentinel.style.top = maxBottom + 'vw';
+    var frags = columnEls.map(function () { return document.createDocumentFragment(); });
+    visible.forEach(function (el, i) { frags[i % columnEls.length].appendChild(el); });
+    // Hidden items don't affect layout (display:none), but keep them parented
+    // somewhere so a later filter change can find and re-show them.
+    hidden.forEach(function (el, i) { frags[i % columnEls.length].appendChild(el); });
+    columnEls.forEach(function (colEl, i) { colEl.appendChild(frags[i]); });
   }
 
   function applyFilters() {
-    var flowCanvas = document.getElementById('flowCanvas');
-    var visibleFlowItems = [];
     var photos = document.querySelectorAll('.photo-item');
     photos.forEach(function (el) {
       var visible = true;
@@ -175,20 +247,14 @@
           if (photoVal !== val.toLowerCase()) visible = false;
         }
       });
-      if (flowCanvas && el.parentNode === flowCanvas) {
-        // display:none (not just opacity/visibility) so a filtered-out item — which
-        // keeps its old absolute position until it's shown again — can't inflate the
-        // page's scrollable area beyond what reflowFlowLayout() just sized the canvas to.
-        if (visible) {
-          visibleFlowItems.push(el);
-        } else {
-          el.style.display = 'none';
-        }
-      } else {
-        el.style.display = visible ? '' : 'none';
-      }
+      // Grid's flex strip lays items out in normal document flow, so hiding an
+      // item with display:none is enough there — the rest of the row closes
+      // the gap on its own. Flow's masonry columns additionally need
+      // rebalancing (see reflowFlowColumns) since hiding in place can leave
+      // one column much shorter than the others.
+      el.style.display = visible ? '' : 'none';
     });
-    if (flowCanvas) reflowFlowLayout(flowCanvas, visibleFlowItems);
+    reflowFlowColumns();
   }
 
   function setFilter(type, value) {
@@ -199,13 +265,13 @@
       activeFilters[type] = value;
     }
     updateButtonLabel(type);
-    applyFilters();
+    applyFiltersAfterLoading();
   }
 
   function clearFilter(type) {
     activeFilters[type] = null;
     updateButtonLabel(type);
-    applyFilters();
+    applyFiltersAfterLoading();
   }
 
   /** Build a query string (e.g. "category=Birds&camera=SONY%20A7IV") from the active filters */
@@ -236,6 +302,11 @@
     var labelEl = btn.querySelector('span');
     if (!labelEl) return;
     var active = activeFilters[type];
+    // Location stores "country::India" / "state::Tokyo" internally so applyFilters()
+    // can tell the two kinds apart — strip that prefix back off for display.
+    if (active && type === 'country' && active.indexOf('::') !== -1) {
+      active = active.slice(active.indexOf('::') + 2);
+    }
     if (active) {
       // Truncate long names for the pill
       var short = active.length > 16 ? active.substring(0, 14) + '…' : active;
@@ -444,13 +515,21 @@
             e.stopPropagation();
             activeFilters.country = null;
             updateButtonLabel('country');
-            applyFilters();
+            applyFiltersAfterLoading();
             menuEl.classList.add('hidden');
           });
         }
 
         /* Row clicks — country or state selection */
         menuEl.addEventListener('click', function (e) {
+          // Each row's visible "radio" is a <label> wrapping a sr-only (clipped,
+          // unclickable-by-pointer) <input>. Clicking the label fires a click that
+          // bubbles here AND — per native label/control activation — the browser
+          // separately dispatches a synthetic click on the input itself, which also
+          // bubbles here. Without this guard both events run the toggle logic below,
+          // selecting the state and then immediately deselecting it again in the same
+          // gesture, so nothing ever appears to get selected.
+          if (e.target.closest('.oww-loc-radio')) return;
           var expand = e.target.closest('.oww-loc-expand');
           if (expand) {
             e.stopPropagation();
@@ -474,9 +553,14 @@
             activeFilters.country = newFilter;
           }
           updateButtonLabel('country');
-          applyFilters();
+          applyFiltersAfterLoading();
           rerender();
-          if (activeFilters.country) menuEl.classList.add('hidden');
+          // Only close on a specific-state pick. Closing on a country pick too (the
+          // menu had done that unconditionally) meant clicking a country immediately
+          // hid the very state list it had just expanded, before the visitor could
+          // ever click one — selecting a country worked, but there was no way to then
+          // narrow down to a state.
+          if (kind === 'state' && activeFilters.country) menuEl.classList.add('hidden');
         });
       })
       .catch(function () {
@@ -489,7 +573,7 @@
       if (activeFilters.country) {
         activeFilters.country = null;
         updateButtonLabel('country');
-        applyFilters();
+        applyFiltersAfterLoading();
         document.querySelectorAll('.oww-dropdown').forEach(function (d) { d.classList.add('hidden'); });
         return;
       }
@@ -751,6 +835,13 @@
   if (panel && pBtn) {
     var plusIcon  = document.getElementById('detailPlus');
     var closeIcon = document.getElementById('detailClose');
+    // Below md the panel is a near-full-width overlay (w-[min(360px,92vw)]),
+    // not a slim sidebar, so it should sit on top of the stage rather than
+    // shove it aside — pushing a 390px-wide stage over by hundreds of px would
+    // just shunt the photo and BACK button off-screen. Only shift the stage's
+    // padding at md+, where the fixed-pixel side-panel layout is what the
+    // stage's own md:pl-[180px] md:pr-[120px] classes were designed around.
+    var isDesktopLayout = function () { return window.matchMedia('(min-width: 768px)').matches; };
     pBtn.addEventListener('click', function () {
       var isCurrentlyClosed = panel.classList.contains('translate-x-full');
       if (isCurrentlyClosed) {
@@ -760,7 +851,7 @@
         if (closeIcon) closeIcon.classList.remove('hidden');
         pBtn.classList.remove('bg-white', 'dark:bg-neutral-900', 'text-neutral-800', 'dark:text-white', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-800');
         pBtn.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'hover:bg-neutral-900', 'dark:hover:bg-neutral-100');
-        if (stage) stage.style.paddingRight = '380px';
+        if (stage && isDesktopLayout()) stage.style.paddingRight = '380px';
       } else {
         // Close drawer
         panel.classList.add('translate-x-full');
@@ -768,7 +859,7 @@
         if (closeIcon) closeIcon.classList.add('hidden');
         pBtn.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'hover:bg-neutral-900', 'dark:hover:bg-neutral-100');
         pBtn.classList.add('bg-white', 'dark:bg-neutral-900', 'text-neutral-800', 'dark:text-white', 'hover:bg-neutral-100', 'dark:hover:bg-neutral-800');
-        if (stage) stage.style.paddingRight = '120px';
+        if (stage && isDesktopLayout()) stage.style.paddingRight = '120px';
       }
     });
     document.addEventListener('keydown', function (e) {
@@ -781,13 +872,13 @@
     b.addEventListener('click', function () {
       document.querySelectorAll('[data-take]').forEach(function (o) {
         var on = o === b;
-        o.classList.toggle('bg-ink', on);
-        o.classList.toggle('text-white', on);
-        o.classList.toggle('dark:bg-white', on);
-        o.classList.toggle('dark:text-ink', on);
-        o.classList.toggle('font-medium', on);
-        o.classList.toggle('text-ink/45', !on);
-        o.classList.toggle('dark:text-white/45', !on);
+        if (on) {
+          o.classList.add('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'font-semibold');
+          o.classList.remove('text-neutral-400', 'dark:text-neutral-500', 'hover:text-white', 'dark:hover:text-black', 'font-medium');
+        } else {
+          o.classList.remove('bg-black', 'text-white', 'dark:bg-white', 'dark:text-black', 'font-semibold');
+          o.classList.add('text-neutral-400', 'dark:text-neutral-500', 'hover:text-white', 'dark:hover:text-black', 'font-medium');
+        }
       });
     });
   });
@@ -864,7 +955,7 @@
         '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' + esc(p.cap) + '</span>';
+        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-6 whitespace-nowrap text-[15px] text-white drop-shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">' + esc(p.cap) + '</span>';
       return a;
     }
 
@@ -878,9 +969,9 @@
     }
 
     function loadNextPage() {
-      if (loading || !hasMore) return;
+      if (loading || !hasMore) return null;
       loading = true;
-      fetch('/api/photos/grid?offset=' + offset + '&limit=' + pageSize)
+      return fetch('/api/photos/grid?offset=' + offset + '&limit=' + pageSize)
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data && data.success && data.photos && data.photos.length) {
@@ -897,6 +988,16 @@
           loading = false; // let the next qualifying scroll retry
         });
     }
+
+    /** Fetch every remaining page up front (ignoring scroll position) so a
+     *  newly-activated filter can match photos anywhere in the full set, not
+     *  just whatever's scrolled into view so far. See applyFiltersAfterLoading(). */
+    function loadAllRemaining() {
+      if (!hasMore) return Promise.resolve();
+      var p = loadNextPage();
+      return p ? p.then(loadAllRemaining) : Promise.resolve();
+    }
+    gridLoadAll = loadAllRemaining;
 
     strip.addEventListener('scroll', function () {
       measure();
@@ -922,48 +1023,31 @@
   })();
 
   /* ── Flow view — infinite scroll pagination ────────────────────────
-   * The server renders the first page already laid out (see index.ejs). As the
-   * visitor nears the bottom of #flowCanvas, fetch the next page of real photos
-   * from /api/photos/flow, position each one (continuing the same auto-layout
-   * cycle the server used) and grow the canvas to fit. */
+   * The server renders the first page already laid out into N column groups
+   * (see index.ejs). As the visitor nears #flowSentinel, fetch the next page
+   * of real photos from /api/photos/flow, tag each with the next data-index
+   * in sequence, and hand off to reflowFlowColumns() (via applyFilters) to
+   * slot them into the columns — same balancing logic a filter change uses,
+   * so new photos land correctly whether or not a filter is currently active. */
   (function () {
     var canvas = document.getElementById('flowCanvas');
-    var stateEl = document.getElementById('flowState');
     var sentinel = document.getElementById('flowSentinel');
-    if (!canvas || !stateEl || !sentinel) return;
+    if (!canvas || !sentinel) return;
 
-    // Must match index.ejs's masonry engine exactly: each column keeps stacking from
-    // wherever the server (or the previous page's fetch) left its bottom edge, so a
-    // freshly-loaded page continues the same 5 columns instead of restarting them.
-    var COLUMNS = window.__flowColumns || [];
-    var COLUMN_GAP = window.__flowColumnGap || 3;
+    var columnEls = Array.prototype.slice.call(canvas.querySelectorAll('.flow-column'));
+    if (!columnEls.length) return;
+
     var pageSize = parseInt(canvas.getAttribute('data-page-size'), 10) || 30;
     var offset = parseInt(canvas.getAttribute('data-offset'), 10) || 0;
     var hasMore = canvas.getAttribute('data-has-more') === '1';
-    var columnBottoms = (stateEl.getAttribute('data-column-bottoms') || '')
-      .split(',').map(parseFloat);
-    var columnCounts = (stateEl.getAttribute('data-column-counts') || '')
-      .split(',').map(function (n) { return parseInt(n, 10) || 0; });
-    var maxBottom = Math.max.apply(null, columnBottoms) + 4;
+    var nextIndex = offset;
     var loading = false;
 
-    function nextAutoPos() {
-      var idx = 0;
-      for (var i = 1; i < columnBottoms.length; i++) {
-        if (columnBottoms[i] < columnBottoms[idx]) idx = i;
-      }
-      var col = COLUMNS[idx];
-      var t = columnBottoms[idx] + COLUMN_GAP;
-      var h = col.shapes[columnCounts[idx] % col.shapes.length];
-      columnCounts[idx]++;
-      columnBottoms[idx] = t + h;
-      return { l: col.l, t: t, w: col.w, h: h };
-    }
-
-    function buildPhotoItem(p, pos) {
+    function buildPhotoItem(p) {
       var a = document.createElement('a');
       a.href = '/photo/' + encodeURIComponent(p.slug);
-      a.className = 'photo-item group absolute block';
+      a.className = 'photo-item group relative block hover:z-10 focus-visible:z-10 mb-10 md:mb-12';
+      a.setAttribute('data-index', nextIndex++);
       a.setAttribute('data-category', p.category || '');
       a.setAttribute('data-collection', p.collection || '');
       a.setAttribute('data-camera', p.camera || '');
@@ -971,14 +1055,8 @@
       a.setAttribute('data-country', p.country || '');
       a.setAttribute('data-state', p.state || '');
       a.setAttribute('data-year', p.year || '');
-      a.style.left = pos.l + 'vw';
-      a.style.top = pos.t + 'vw';
-      a.style.width = pos.w + 'vw';
-      a.style.height = pos.h + 'vw';
       a.innerHTML =
-        '<span class="block w-full h-full overflow-hidden">' +
-          '<img src="' + escAttr(p.src) + '" alt="' + escAttr(p.alt) + '" loading="lazy" class="w-full h-full object-cover select-none">' +
-        '</span>' +
+        '<img src="' + escAttr(p.src) + '" alt="' + escAttr(p.alt) + '" class="block w-full h-auto select-none">' +
         '<span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
           '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
             '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
@@ -997,21 +1075,19 @@
     }, { rootMargin: '800px 0px' });
 
     function appendPhotos(newPhotos) {
-      var frag = document.createDocumentFragment();
+      // Placement doesn't matter here — applyFilters()'s reflowFlowColumns()
+      // immediately re-sorts every item by data-index and redistributes them
+      // evenly, so just get the new nodes into the DOM.
       newPhotos.forEach(function (p) {
-        frag.appendChild(buildPhotoItem(p, nextAutoPos()));
+        columnEls[0].appendChild(buildPhotoItem(p));
       });
-      maxBottom = Math.max.apply(null, columnBottoms) + 4;
-      canvas.insertBefore(frag, stateEl);
-      canvas.style.height = maxBottom + 'vw';
-      sentinel.style.top = maxBottom + 'vw';
       applyFilters();
     }
 
     function loadNextPage() {
-      if (loading || !hasMore) return;
+      if (loading || !hasMore) return null;
       loading = true;
-      fetch('/api/photos/flow?offset=' + offset + '&limit=' + pageSize)
+      return fetch('/api/photos/flow?offset=' + offset + '&limit=' + pageSize)
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (data && data.success && data.photos && data.photos.length) {
@@ -1026,6 +1102,16 @@
           loading = false; // let the observer retry on the next intersection
         });
     }
+
+    /** Fetch every remaining page up front (ignoring scroll position) so a
+     *  newly-activated filter can match photos anywhere in the full set, not
+     *  just whatever's scrolled into view so far. See applyFiltersAfterLoading(). */
+    function loadAllRemaining() {
+      if (!hasMore) return Promise.resolve();
+      var p = loadNextPage();
+      return p ? p.then(loadAllRemaining) : Promise.resolve();
+    }
+    flowLoadAll = loadAllRemaining;
 
     if (hasMore) observer.observe(sentinel);
   })();

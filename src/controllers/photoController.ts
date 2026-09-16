@@ -411,8 +411,10 @@ const togglePhoto = async (req: Request, res: Response) => {
 
 const deletePhoto = async (req: Request, res: Response) => {
   try {
+    const page = req.query.page || "1";
+    const search = req.query.search ? "&search=" + encodeURIComponent(String(req.query.search)) : "";
     await pool.query("DELETE FROM photos WHERE slug = ?", [req.params.slug]);
-    res.redirect("/admin/photos?flash=Photo+deleted");
+    res.redirect("/admin/photos?page=" + page + search + "&flash=Photo+deleted");
   } catch (error) {
     console.error("Error deleting photo:", error);
     res.status(500).send("Error deleting photo");

@@ -1,9 +1,12 @@
 <%# views/detail.ejs — expects: title, photo { src, alt, cap }, photos[] (the rail), details %>
   <%- include('partials/head', { title: title }) %>
 
-    <%# ── Left thumbnail slider — organic staggered layout like reference ─── %>
+    <%# ── Left thumbnail slider — organic staggered layout like reference ───
+         Hidden below md: it's a fixed 200px+ wide vertical strip that, combined
+         with the top-right controls and the stage's own reserved padding, left
+         no usable width for the actual photo/BACK button on a phone-size screen. %>
       <aside id="thumbRail"
-        class="fixed left-0 top-0 bottom-0 z-20 w-[14vw] min-w-[200px] max-w-[260px] flex flex-col justify-center select-none py-4 px-3">
+        class="hidden md:flex fixed left-0 top-0 bottom-0 z-20 w-[14vw] min-w-[200px] max-w-[260px] flex-col justify-center select-none py-4 px-3">
 
         <%# Slider viewport %>
           <div id="railViewport" class="overflow-hidden w-full max-h-[92vh] flex flex-col py-1">
@@ -45,18 +48,18 @@
       </aside>
 
       <%# ── Top-right controls ─────────────────────────────────────────── %>
-        <div class="fixed top-6 right-8 z-30 flex items-center gap-5">
+        <div class="fixed top-4 right-4 md:top-6 md:right-8 z-30 flex items-center gap-2.5 sm:gap-3.5 md:gap-5">
           <button type="button" id="ambientBtn"
             class="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
             <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
               stroke-linecap="round">
               <path d="M4 14v4M9 8v10M14 11v7M19 5v13"></path>
             </svg>
-            <span class="whitespace-nowrap font-mono text-[10px]">AMBIENT SOUND</span>
+            <span class="hidden sm:inline whitespace-nowrap font-mono text-[10px]">AMBIENT SOUND</span>
           </button>
 
           <button type="button" id="themeToggle" aria-label="Dark mode"
-            class="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
+            class="js-theme-toggle text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
             <svg class="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
               stroke-linecap="round">
               <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"></path>
@@ -65,9 +68,9 @@
 
           <div class="flex items-center p-0.5 rounded-full bg-black/90 dark:bg-white/90 text-white dark:text-black">
             <button type="button" data-take="edited"
-              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] font-semibold uppercase bg-black text-white dark:bg-white dark:text-black transition-colors">EDITED</button>
+              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] uppercase transition-colors bg-black text-white dark:bg-white dark:text-black font-semibold">EDITED</button>
             <button type="button" data-take="raw"
-              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] font-semibold uppercase text-neutral-400 dark:text-neutral-500 hover:text-white dark:hover:text-black transition-colors">RAW</button>
+              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] uppercase transition-colors text-neutral-400 dark:text-neutral-500 hover:text-white dark:hover:text-black font-medium">RAW</button>
           </div>
 
           <button type="button" id="detailToggle" aria-label="Toggle details"
@@ -83,9 +86,12 @@
           </button>
         </div>
 
-        <%# ── Main stage — photo fills center, right padding adjusts when drawer opens ── %>
+        <%# ── Main stage — photo fills center, right padding adjusts when drawer opens.
+             Side padding matches the thumbnail rail/details panel widths only at md+,
+             where those are actually visible; below that both are full-screen overlays
+             instead, so the stage just needs a small side gutter. ── %>
           <main id="stage"
-            class="h-screen flex flex-col items-center justify-center py-4 pl-[180px] pr-[120px] transition-all duration-500 ease-out">
+            class="h-screen flex flex-col items-center justify-center py-4 px-4 md:pl-[180px] md:pr-[120px] transition-all duration-500 ease-out">
             <div class="flex-1 flex items-center justify-center w-full">
               <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>"
                 class="fade-up max-h-[82vh] w-auto max-w-full object-contain block">
@@ -98,7 +104,7 @@
           <%# ── Details side-panel (Hidden by default until '+' clicked) ───────────────────────── %>
             <% var d=details; %>
               <aside id="detailsPanel"
-                class="fixed right-0 top-0 bottom-0 z-20 w-[360px] bg-white dark:bg-[#121212] border-l border-neutral-100 dark:border-neutral-800 overflow-y-auto no-bar pt-24 px-8 pb-12 text-neutral-800 dark:text-neutral-200 transition-transform duration-300 ease-in-out translate-x-full">
+                class="fixed right-0 top-0 bottom-0 z-20 w-[min(360px,92vw)] bg-white dark:bg-[#121212] border-l border-neutral-100 dark:border-neutral-800 overflow-y-auto no-bar pt-24 px-6 md:px-8 pb-12 text-neutral-800 dark:text-neutral-200 transition-transform duration-300 ease-in-out translate-x-full">
                 <div>
                   <p data-field="kicker" class="text-[10px] font-semibold tracking-[0.18em] uppercase text-neutral-400">
                     <%= d.kicker || 'LANDSCAPE' %>

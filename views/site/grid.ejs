@@ -6,7 +6,12 @@
          data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
          data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
          data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>">
-      <div id="gridTrack" class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max">
+      <div id="gridTrack" class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max pb-14">
+        <%# pb-14 reserves room below the row for the hover caption (top-[calc(100%+18px)]
+            on each .photo-item). #gridStrip has overflow-x-auto, which per the CSS Overflow
+            spec forces its overflow-y to auto too — without this padding the caption sits
+            outside the row's natural content height and gets scrolled out of view instead
+            of ever being visible on hover. %>
         <%
           // Infinite horizontal scroll: the strip is rendered three times in a row so
           // scrolling past either end always has more (duplicate) content to scroll into.
