@@ -8,7 +8,19 @@
 
     <main class="min-w-0 px-7 pb-11 pt-6">
       <form id="photo-form" method="post" enctype="multipart/form-data"
-        action="<%= isEdit ? '/admin/photos/' + photo.slug : '/admin/photos' %>">
+        action="<%= isEdit ? '/admin/photos/' + (typeof originalSlug !== 'undefined' && originalSlug ? originalSlug : photo.slug) : '/admin/photos' %>">
+        <% if (typeof returnPage !== "undefined" && returnPage) { %>
+          <input type="hidden" name="page" value="<%= returnPage %>">
+        <% } %>
+        <% if (typeof returnSearch !== "undefined" && returnSearch) { %>
+          <input type="hidden" name="search" value="<%= returnSearch %>">
+        <% } %>
+        <% if (typeof error !== "undefined" && error) { %>
+          <div class="mb-4 flex items-center justify-between gap-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700">
+            <span>&#9888; <%= error %></span>
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-800">&times;</button>
+          </div>
+        <% } %>
         <div class="mb-4 flex items-end justify-between gap-4">
           <div>
             <h1 class="m-0 mb-1 text-[21px] font-semibold tracking-tight">
