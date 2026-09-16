@@ -13,17 +13,11 @@
             <div id="railTrack" data-count="<%= photos.length %>"
               class="flex flex-col gap-[6px] transition-transform duration-500 ease-[cubic-bezier(.2,.7,.2,1)] py-1">
               <%
-                // The rail loops endlessly (wheel/arrow keys cycle through photos forever). To make
-                // that feel seamless — instead of visibly snapping back to the top when it wraps —
-                // the thumb list is rendered three times in a row; app.js walks through the middle
-                // copy and silently re-centers into it whenever the edge copies are reached, so the
-                // wrap is invisible (the same photos are shown either side of the reset).
                 var railLayout=[ [10, 80, 82], [10, 80, 82], [10, 80, 82], [10, 80, 82], [30, 80, 82], [48, 80, 82], [30,
                 80, 82], [10, 80, 82], [10, 80, 82] ]; var qs=(typeof filterQuery !=='undefined' && filterQuery) ? '?' +
                 filterQuery : '';
-                for (var railCopy = 0; railCopy < 3; railCopy++) {
-                  photos.forEach(function (p, i) { var lay=railLayout[i %
-                  railLayout.length]; var dData=p.details || details || {}; %>
+                photos.forEach(function (p, i) { var lay=railLayout[i %
+                railLayout.length]; var dData=p.details || details || {}; %>
                 <a href="/photo/<%= p.slug %><%= qs %>"
                   class="rail-thumb rail-in group block shrink-0 overflow-hidden transition-all duration-300 relative rounded-sm"
                   data-src="<%= p.src %>" data-alt="<%= p.alt %>" data-href="/photo/<%= p.slug %><%= qs %>"
@@ -40,8 +34,7 @@
                   <img src="<%= p.src %>" alt="<%= p.alt %>" loading="lazy"
                     class="w-full h-full object-cover">
                 </a>
-                  <% });
-                } %>
+                <% }); %>
             </div>
           </div>
 
@@ -66,11 +59,11 @@
             </svg>
           </button>
 
-          <div class="flex items-center p-0.5 rounded-full bg-black/90 dark:bg-white/90 text-white dark:text-black">
+          <div class="flex items-center p-0.5 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
             <button type="button" data-take="edited"
               class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] uppercase transition-colors bg-black text-white dark:bg-white dark:text-black font-semibold">EDITED</button>
             <button type="button" data-take="raw"
-              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] uppercase transition-colors text-neutral-400 dark:text-neutral-500 hover:text-white dark:hover:text-black font-medium">RAW</button>
+              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] uppercase transition-colors text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 font-medium">RAW</button>
           </div>
 
           <button type="button" id="detailToggle" aria-label="Toggle details"
@@ -105,7 +98,7 @@
           <%# ── Details side-panel (Hidden by default until '+' clicked) ───────────────────────── %>
             <% var d=details; %>
               <aside id="detailsPanel"
-                class="fixed right-0 top-0 bottom-0 z-20 w-[min(360px,92vw)] bg-white dark:bg-[#121212] border-l border-neutral-100 dark:border-neutral-800 overflow-y-auto no-bar pt-24 px-6 md:px-8 pb-12 text-neutral-800 dark:text-neutral-200 transition-transform duration-300 ease-in-out translate-x-full">
+                class="fixed right-0 top-20 bottom-0 z-20 w-[min(360px,92vw)] bg-white dark:bg-[#121212] border-t border-l border-neutral-200 dark:border-neutral-800 overflow-y-auto no-bar pt-8 px-6 md:px-8 pb-12 text-neutral-800 dark:text-neutral-200 transition-transform duration-300 ease-in-out translate-x-full">
                 <div>
                   <p data-field="kicker" class="text-[10px] font-semibold tracking-[0.18em] uppercase text-neutral-400">
                     <%= d.kicker || 'LANDSCAPE' %>
@@ -118,7 +111,7 @@
                     <%= d.ref %>
                   </p>
 
-                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <div class="my-6 border-t border-dashed border-neutral-200 dark:border-neutral-800"></div>
                   <p
                     class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
                     <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> ABOUT THE PHOTO
@@ -133,7 +126,7 @@
                     <%= d.altNote %>
                   </p>
 
-                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <div class="my-6 border-t border-dashed border-neutral-200 dark:border-neutral-800"></div>
                   <p
                     class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
                     <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> ABOUT THE COLLECTION
@@ -146,7 +139,7 @@
                     class="mt-3 inline-block font-mono text-[10px] font-bold tracking-[0.12em] uppercase text-amber-600 dark:text-amber-400 hover:underline">VIEW
                     FULL COLLECTION &rarr;</a>
 
-                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <div class="my-6 border-t border-dashed border-neutral-200 dark:border-neutral-800"></div>
                   <p
                     class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
                     <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> CAMERA
@@ -157,7 +150,7 @@
                       </span>
                   </p>
 
-                  <div class="my-6 border-t border-dotted border-neutral-200 dark:border-neutral-800"></div>
+                  <div class="my-6 border-t border-dashed border-neutral-200 dark:border-neutral-800"></div>
                   <p
                     class="text-[10px] font-bold tracking-[0.14em] uppercase text-neutral-400 flex items-center gap-1.5">
                     <span class="w-[4px] h-[4px] rounded-full bg-amber-500"></span> FIELD DATA

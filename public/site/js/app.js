@@ -952,19 +952,10 @@
     var currentIdx = 0;
     var STEP = 1;
 
-    var photoCount =
-      parseInt(track.getAttribute("data-count"), 10) ||
-      Math.round(thumbs.length / 3) ||
-      thumbs.length;
-
-    var activeIdx = photoCount;
+    var activeIdx = 0;
 
     if (mainPhoto) {
-      for (
-        var mi = photoCount;
-        mi < Math.min(2 * photoCount, thumbs.length);
-        mi++
-      ) {
+      for (var mi = 0; mi < thumbs.length; mi++) {
         if (
           thumbs[mi].getAttribute("data-src") === mainPhoto.getAttribute("src")
         ) {
@@ -972,10 +963,6 @@
           break;
         }
       }
-    }
-
-    if (activeIdx >= thumbs.length) {
-      activeIdx = thumbs.length - 1;
     }
 
     function thumbUnitHeight() {
@@ -1172,19 +1159,6 @@
         return;
       }
 
-      if (
-        photoCount > 0 &&
-        (activeIdx >= 2 * photoCount || activeIdx < photoCount)
-      ) {
-        activeIdx += activeIdx >= 2 * photoCount ? -photoCount : photoCount;
-
-        centerThumb(activeIdx, false);
-
-        updateDynamicLayout(false);
-
-        void track.offsetHeight;
-      }
-
       setActivePhoto(activeIdx + delta);
     }
 
@@ -1296,9 +1270,9 @@
           "dark:hover:bg-neutral-100",
         );
 
-        if (stage && isDesktopLayout()) {
+        /* if (stage && isDesktopLayout()) {
           stage.style.paddingRight = "380px";
-        }
+        } */
       } else {
         panel.classList.add("translate-x-full");
 
@@ -1328,9 +1302,9 @@
           "dark:hover:bg-neutral-800",
         );
 
-        if (stage && isDesktopLayout()) {
+        /* if (stage && isDesktopLayout()) {
           stage.style.paddingRight = "120px";
-        }
+        } */
       }
     });
 
@@ -1360,8 +1334,8 @@
           o.classList.remove(
             "text-neutral-400",
             "dark:text-neutral-500",
-            "hover:text-white",
-            "dark:hover:text-black",
+            "hover:text-neutral-700",
+            "dark:hover:text-neutral-300",
             "font-medium",
           );
         } else {
@@ -1376,8 +1350,8 @@
           o.classList.add(
             "text-neutral-400",
             "dark:text-neutral-500",
-            "hover:text-white",
-            "dark:hover:text-black",
+            "hover:text-neutral-700",
+            "dark:hover:text-neutral-300",
             "font-medium",
           );
         }
