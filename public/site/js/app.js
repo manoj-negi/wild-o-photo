@@ -809,6 +809,7 @@
             updateButtonLabel("country");
 
             applyFiltersAfterLoading();
+            updateURLQuery();
 
             menuEl.classList.add("hidden");
           });
@@ -864,6 +865,7 @@
           updateButtonLabel("country");
 
           applyFiltersAfterLoading();
+          updateURLQuery();
 
           rerender();
 
