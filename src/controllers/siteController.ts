@@ -81,6 +81,18 @@ const parseMeta = (raw: any): Record<string, string> => {
  * Map a DB row into the shape the site views & API expect.
  * All numeric l/t/w/h are returned as numbers (vw units).
  */
+const formatCameraName = (brand?: string, model?: string, fallback?: string): string => {
+  if (!model) return fallback || "";
+  if (!brand || model.toLowerCase().startsWith(brand.toLowerCase())) return model;
+  return `${brand} ${model}`;
+};
+
+const formatLensName = (brand?: string, model?: string, fallback?: string): string => {
+  if (!model) return fallback || "";
+  if (!brand || model.toLowerCase().startsWith(brand.toLowerCase())) return model;
+  return `${brand} ${model}`;
+};
+
 const mapToSitePhoto = (
   row: DBPhotoRow,
   collectionMap: Record<string, string> = {}
@@ -118,8 +130,8 @@ const mapToSitePhoto = (
     about: row.description || "",
     altNote: row.alt_note || "",
     aboutCollection: (row as any).col_desc || collectionMap[collectionName] || "",
-    camera: (row as any).cam_model || getMeta("Camera"),
-    lens: (row as any).len_model || getMeta("Lens"),
+    camera: formatCameraName((row as any).cam_brand, (row as any).cam_model, getMeta("Camera")),
+    lens: formatLensName((row as any).len_brand, (row as any).len_model, getMeta("Lens")),
     location: getMeta("Location"),
     settings: getMeta("Settings"),
     date: row.date || "",
@@ -179,18 +191,6 @@ const SELECT_SITE_PHOTOS = `
   LEFT JOIN countries co ON p.country_id = co.id
 `;
 
-const formatCameraName = (brand?: string, model?: string, fallback?: string): string => {
-  if (!model) return fallback || "";
-  if (!brand || model.toLowerCase().startsWith(brand.toLowerCase())) return model;
-  return `${brand} ${model}`;
-};
-
-const formatLensName = (brand?: string, model?: string, fallback?: string): string => {
-  if (!model) return fallback || "";
-  if (!brand || model.toLowerCase().startsWith(brand.toLowerCase())) return model;
-  return `${brand} ${model}`;
-};
-
 // Number of photos rendered on the flow view's first load, and fetched per
 // /api/photos/flow page as the visitor scrolls near the bottom of the canvas.
 const FLOW_PAGE_SIZE = 30;
@@ -223,8 +223,6 @@ const getFlow = async (req: Request, res: Response) => {
       p.category = r.cat_name || p.category;
       p.collection = r.col_name || p.collection;
       p.aboutCollection = r.col_desc || p.aboutCollection;
-      p.camera = formatCameraName(r.cam_brand, r.cam_model, p.camera);
-      p.lens = formatLensName(r.len_brand, r.len_model, p.lens);
       return p;
     });
 
@@ -267,8 +265,6 @@ const getGrid = async (req: Request, res: Response) => {
       p.category = r.cat_name || p.category;
       p.collection = r.col_name || p.collection;
       p.aboutCollection = r.col_desc || p.aboutCollection;
-      p.camera = formatCameraName(r.cam_brand, r.cam_model, p.camera);
-      p.lens = formatLensName(r.len_brand, r.len_model, p.lens);
       return p;
     });
 
@@ -381,8 +377,6 @@ const getPhotoDetail = async (req: Request, res: Response) => {
       p.category = r.cat_name || p.category;
       p.collection = r.col_name || p.collection;
       p.aboutCollection = r.col_desc || p.aboutCollection;
-      p.camera = formatCameraName(r.cam_brand, r.cam_model, p.camera);
-      p.lens = formatLensName(r.len_brand, r.len_model, p.lens);
       return p;
     };
 
