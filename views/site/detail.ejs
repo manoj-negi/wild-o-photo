@@ -84,10 +84,10 @@
              where those are actually visible; below that both are full-screen overlays
              instead, so the stage just needs a small side gutter. ── %>
           <main id="stage"
-            class="h-screen flex flex-col items-center justify-center py-4 px-4 md:pl-[180px] md:pr-[120px] transition-all duration-500 ease-out">
-            <div class="flex-1 flex items-center justify-center w-full">
+            class="h-screen flex flex-col items-center justify-center pt-20 pb-4 px-4 md:pl-[180px] md:pr-[120px] transition-all duration-500 ease-out">
+            <div class="flex-1 flex items-center justify-center w-full min-h-0">
               <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>"
-                class="fade-up max-h-[82vh] w-auto max-w-full object-contain block">
+                class="fade-up max-h-full w-auto max-w-full object-contain block">
             </div>
             <a href="/"
             id="photoBackBtn"
