@@ -96,6 +96,8 @@ const createCategory = async (req: Request, res: Response) => {
 const updateCategory = async (req: Request, res: Response) => {
   try {
     const page = req.body.page || req.query.page || "1";
+    const search = req.body.search || req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBCategoryRow[]>(
       "SELECT id, name AS title, parent, description FROM categories ORDER BY id ASC"
     );
@@ -114,7 +116,7 @@ const updateCategory = async (req: Request, res: Response) => {
       [title, parent, description, targetCategory.id]
     );
 
-    res.redirect("/admin/categories?page=" + page + "&flash=Category+saved");
+    res.redirect("/admin/categories?page=" + page + searchParam + "&flash=Category+saved");
   } catch (error: any) {
     console.error("Error updating category:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
@@ -128,6 +130,8 @@ const updateCategory = async (req: Request, res: Response) => {
 const deleteCategory = async (req: Request, res: Response) => {
   try {
     const page = req.query.page || "1";
+    const search = req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBCategoryRow[]>(
       "SELECT id FROM categories ORDER BY id ASC"
     );
@@ -139,7 +143,7 @@ const deleteCategory = async (req: Request, res: Response) => {
       await pool.query("DELETE FROM categories WHERE id = ?", [targetCategory.id]);
     }
 
-    res.redirect("/admin/categories?page=" + page + "&flash=Category+deleted");
+    res.redirect("/admin/categories?page=" + page + searchParam + "&flash=Category+deleted");
   } catch (error: any) {
     console.error("Error deleting category:", error);
     if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {

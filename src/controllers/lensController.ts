@@ -115,6 +115,8 @@ const createLens = async (req: Request, res: Response) => {
 const updateLens = async (req: Request, res: Response) => {
   try {
     const page = req.body.page || req.query.page || "1";
+    const search = req.body.search || req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBLensRow[]>(
       "SELECT id, brand, model FROM lenses ORDER BY id ASC"
     );
@@ -132,7 +134,7 @@ const updateLens = async (req: Request, res: Response) => {
       [brand || null, model, targetLens.id]
     );
 
-    res.redirect("/admin/lenses?page=" + page + "&flash=Lens+saved");
+    res.redirect("/admin/lenses?page=" + page + searchParam + "&flash=Lens+saved");
   } catch (error: any) {
     console.error("Error updating lens:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
@@ -150,6 +152,8 @@ const updateLens = async (req: Request, res: Response) => {
 const deleteLens = async (req: Request, res: Response) => {
   try {
     const page = req.query.page || "1";
+    const search = req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBLensRow[]>(
       "SELECT id FROM lenses ORDER BY id ASC"
     );
@@ -161,7 +165,7 @@ const deleteLens = async (req: Request, res: Response) => {
       await pool.query("DELETE FROM lenses WHERE id = ?", [targetLens.id]);
     }
 
-    res.redirect("/admin/lenses?page=" + page + "&flash=Lens+deleted");
+    res.redirect("/admin/lenses?page=" + page + searchParam + "&flash=Lens+deleted");
   } catch (error: any) {
     console.error("Error deleting lens:", error);
     if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {

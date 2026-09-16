@@ -109,6 +109,8 @@ const createCamera = async (req: Request, res: Response) => {
 const updateCamera = async (req: Request, res: Response) => {
   try {
     const page = req.body.page || req.query.page || "1";
+    const search = req.body.search || req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
     );
@@ -126,7 +128,7 @@ const updateCamera = async (req: Request, res: Response) => {
       [brand, model, targetCamera.id]
     );
 
-    res.redirect("/admin/cameras?page=" + page + "&flash=Camera+saved");
+    res.redirect("/admin/cameras?page=" + page + searchParam + "&flash=Camera+saved");
   } catch (error: any) {
     console.error("Error updating camera:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
@@ -143,6 +145,8 @@ const updateCamera = async (req: Request, res: Response) => {
 const deleteCamera = async (req: Request, res: Response) => {
   try {
     const page = req.query.page || "1";
+    const search = req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBCameraRow[]>(
       "SELECT id FROM cameras ORDER BY id ASC"
     );
@@ -154,7 +158,7 @@ const deleteCamera = async (req: Request, res: Response) => {
       await pool.query("DELETE FROM cameras WHERE id = ?", [targetCamera.id]);
     }
 
-    res.redirect("/admin/cameras?page=" + page + "&flash=Camera+deleted");
+    res.redirect("/admin/cameras?page=" + page + searchParam + "&flash=Camera+deleted");
   } catch (error: any) {
     console.error("Error deleting camera:", error);
     if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {

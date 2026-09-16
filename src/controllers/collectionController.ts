@@ -100,6 +100,8 @@ const createCollection = async (req: Request, res: Response) => {
 const updateCollection = async (req: Request, res: Response) => {
   try {
     const page = req.body.page || req.query.page || "1";
+    const search = req.body.search || req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBCollectionRow[]>(
       "SELECT id, name FROM collections ORDER BY id ASC"
     );
@@ -117,7 +119,7 @@ const updateCollection = async (req: Request, res: Response) => {
       [title, description, targetCollection.id]
     );
 
-    res.redirect("/admin/collections?page=" + page + "&flash=Collection+saved");
+    res.redirect("/admin/collections?page=" + page + searchParam + "&flash=Collection+saved");
   } catch (error: any) {
     console.error("Error updating collection:", error);
     res.status(500).send("Error updating collection");
@@ -127,6 +129,8 @@ const updateCollection = async (req: Request, res: Response) => {
 const deleteCollection = async (req: Request, res: Response) => {
   try {
     const page = req.query.page || "1";
+    const search = req.query.search || "";
+    const searchParam = search ? "&search=" + encodeURIComponent(String(search)) : "";
     const [rows] = await pool.query<DBCollectionRow[]>(
       "SELECT id FROM collections ORDER BY id ASC"
     );
@@ -138,7 +142,7 @@ const deleteCollection = async (req: Request, res: Response) => {
       await pool.query("DELETE FROM collections WHERE id = ?", [targetCollection.id]);
     }
 
-    res.redirect("/admin/collections?page=" + page + "&flash=Collection+deleted");
+    res.redirect("/admin/collections?page=" + page + searchParam + "&flash=Collection+deleted");
   } catch (error: any) {
     console.error("Error deleting collection:", error);
     if (error && (error.code === "ER_ROW_IS_REFERENCED_2" || error.errno === 1451)) {

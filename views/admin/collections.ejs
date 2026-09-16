@@ -72,7 +72,7 @@
                             class="rounded-full border border-line2 bg-white px-3 py-1.5 text-xs hover:bg-sand">
                       Edit
                     </button>
-                    <form method="post" action="/admin/collections/<%= c.id || i %>/delete<%= typeof pagination !== 'undefined' ? '?page=' + pagination.currentPage : '' %>" data-confirm="Delete <%= c.title || c.name %>?">
+                    <form method="post" action="/admin/collections/<%= c.id || i %>/delete<%= typeof pagination !== 'undefined' ? '?page=' + pagination.currentPage : '' %><%= (typeof search !== 'undefined' && search) ? '&search=' + encodeURIComponent(search) : '' %>" data-confirm="Delete <%= c.title || c.name %>?">
                       <button type="submit" class="rounded-full border border-line2 bg-white px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 hover:border-red-200">Delete</button>
                     </form>
                   </div>
@@ -137,6 +137,7 @@
   <form id="edit-collection-form" method="post" action=""
         class="w-full max-w-[460px] overflow-hidden rounded-[20px] border border-line bg-cream shadow-2xl">
     <input type="hidden" name="page" value="<%= typeof pagination !== 'undefined' ? pagination.currentPage : 1 %>">
+    <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <div class="flex items-center justify-between gap-3 bg-pine px-5 py-4 text-cream">
       <span class="text-[15px] font-semibold">Edit collection</span>
       <button type="button" data-close-modal class="h-7 w-7 rounded-full border border-cream/25 text-sm leading-none text-cream">&times;</button>

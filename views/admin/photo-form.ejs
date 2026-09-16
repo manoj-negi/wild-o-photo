@@ -31,7 +31,7 @@
             </p>
           </div>
           <div class="flex gap-2">
-            <a href="/admin/photos" class="pill-light">Cancel</a>
+            <a href="/admin/photos<%= (typeof returnPage !== "undefined" && returnPage) ? "?page=" + returnPage + (typeof returnSearch !== "undefined" && returnSearch ? "&search=" + encodeURIComponent(returnSearch) : "") : "" %>" class="pill-light">Cancel</a>
             <button type="submit" name="live" value="draft" class="pill-light">Save as draft</button>
             <button type="submit" name="live" value="live" class="pill-dark">
               <%= isEdit ? "Save changes" : "Save & Publish" %>
