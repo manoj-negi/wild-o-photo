@@ -1126,15 +1126,9 @@
 
     var offsetsPattern = [44, 28, 16, 8];
 
-    var sizePattern = [
-      [78, 56],
-      [58, 72],
-      [70, 52],
-      [64, 64],
-      [56, 70],
-      [72, 54],
-      [62, 60],
-    ];
+    var THUMB_WIDTH = 80;
+
+    var heightPattern = [56, 72, 52, 64, 70, 54, 60];
 
     function updateDynamicLayout(animate) {
       thumbs.forEach(function (el, i) {
@@ -1142,7 +1136,7 @@
 
         var ml = dist < offsetsPattern.length ? offsetsPattern[dist] : 8;
 
-        var sz = sizePattern[i % sizePattern.length];
+        var h = heightPattern[i % heightPattern.length];
 
         el.style.transition =
           animate === false
@@ -1151,9 +1145,9 @@
 
         el.style.marginLeft = ml + "px";
 
-        el.style.width = sz[0] + "px";
+        el.style.width = THUMB_WIDTH + "px";
 
-        el.style.height = sz[1] + "px";
+        el.style.height = h + "px";
       });
     }
 
