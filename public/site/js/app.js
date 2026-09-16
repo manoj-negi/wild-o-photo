@@ -1767,10 +1767,10 @@
     backBtn.addEventListener("click", function (e) {
       e.preventDefault();
 
-      if (document.referrer && document.referrer.includes("/grid")) {
+      if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
         window.history.back();
       } else {
-        window.location.href = "/grid";
+        window.location.href = "/";
       }
     });
   })();
