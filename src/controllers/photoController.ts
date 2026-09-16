@@ -62,6 +62,39 @@ const blankPhoto = (): AdminPhoto => ({
   meta: []
 });
 
+const photoFromBody = (req: Request): AdminPhoto & Record<string, any> => {
+  const cap = String(req.body.cap || "").trim();
+  return {
+    cap,
+    slug: slugify(req.body.slug || cap),
+    title: (req.body.title || cap).trim(),
+    ref: (req.body.ref || "").trim(),
+    category: "",
+    collection: "",
+    camera: "",
+    category_id: req.body.category_id ? parseInt(req.body.category_id, 10) : null,
+    collection_id: req.body.collection_id ? parseInt(req.body.collection_id, 10) : null,
+    camera_id: req.body.camera_id ? parseInt(req.body.camera_id, 10) : null,
+    lens_id: req.body.lens_id ? parseInt(req.body.lens_id, 10) : null,
+    country_id: req.body.country_id ? parseInt(req.body.country_id, 10) : null,
+    state: (req.body.state || "").trim(),
+    location: (req.body.location || "").trim(),
+    settings: (req.body.settings || "").trim(),
+    date: (req.body.date || "").trim(),
+    about: (req.body.about || "").trim(),
+    altNote: (req.body.altNote || "").trim(),
+    alt: (req.body.alt || "").trim(),
+    src: req.body.src || "",
+    l: req.body.l || "",
+    t: req.body.t || "",
+    w: req.body.w || "",
+    h: req.body.h || "",
+    live: req.body.live !== "draft",
+    views: ["Flow", "Grid"],
+    meta: []
+  };
+};
+
 const mapDBPhotoToAdminPhoto = (row: DBPhotoRow, collectionDescriptions: Record<string, string> = {}): AdminPhoto & Record<string, any> => {
   let metaArr: MetaItem[] = [];
   if (row.metadata) {
@@ -262,11 +295,14 @@ const getEditPhotoForm = async (req: Request, res: Response) => {
       nav: "photos",
       mode: "edit",
       photo,
+      originalSlug: photo.slug,
       categories: catRows,
       collections: collRows,
       cameras: camRows,
       lenses: lensRows,
-      countries: countryRows
+      countries: countryRows,
+      returnPage: req.query.page || "",
+      returnSearch: req.query.search || ""
     });
   } catch (error) {
     console.error("Error rendering edit photo form:", error);
@@ -275,14 +311,10 @@ const getEditPhotoForm = async (req: Request, res: Response) => {
 };
 
 const createPhoto = async (req: Request, res: Response) => {
+  let s3Key = "";
+  let photoUrl = req.body.src || "";
+
   try {
-
-
-    
-
-    let s3Key = "";
-    let photoUrl = req.body.src || "";
-
     if (req.file) {
       const file = req.file;
       s3Key = `photos/${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`;
@@ -341,13 +373,36 @@ const slug = slugify(req.body.slug || cap);
     );
 
     res.redirect("/admin/photos?flash=Photo+added");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error creating photo:", error);
+    if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
+      const photo = photoFromBody(req);
+      photo.src = photoUrl || photo.src;
+      const [catRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM categories ORDER BY id ASC");
+      const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM collections ORDER BY id ASC");
+      const [camRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM cameras ORDER BY id ASC");
+      const [lensRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM lenses ORDER BY id ASC");
+      const [countryRows] = await pool.query<RowDataPacket[]>("SELECT id, country, state FROM countries ORDER BY country ASC, state ASC");
+      return res.status(409).render("photo-form", {
+        nav: "add",
+        mode: "add",
+        photo,
+        categories: catRows,
+        collections: collRows,
+        cameras: camRows,
+        lenses: lensRows,
+        countries: countryRows,
+        error: `A photo with slug "${photo.slug}" already exists. Please choose a different slug.`
+      });
+    }
     res.status(500).send("Photo upload failed!");
   }
 };
 
 const updatePhoto = async (req: Request, res: Response) => {
+  let s3Key = "";
+  let photoUrl = req.body.src || "";
+
   try {
     const targetSlug = req.params.slug;
     const [rows] = await pool.query<DBPhotoRow[]>("SELECT * FROM photos WHERE slug = ?", [targetSlug]);
@@ -356,8 +411,8 @@ const updatePhoto = async (req: Request, res: Response) => {
     }
 
     const existing = rows[0];
-    let s3Key = existing.s3_key || "";
-    let photoUrl = existing.url || req.body.src || "";
+    s3Key = existing.s3_key || "";
+    photoUrl = existing.url || req.body.src || "";
 
     if (req.file) {
       const file = req.file;
@@ -412,17 +467,44 @@ const slug = slugify(req.body.slug || cap) || existing.slug;
       [title, cap, slug, ref, photoUrl, s3Key, alt, category_id, collection_id, camera_id, lens_id, country_id, state, date, about, l, t, w, h, live, metadata, targetSlug]
     );
 
-    res.redirect("/admin/photos?flash=Photo+saved");
-  } catch (error) {
+    const page = req.body.page || "1";
+    const search = req.body.search ? "&search=" + encodeURIComponent(String(req.body.search)) : "";
+    res.redirect("/admin/photos?page=" + page + search + "&flash=Photo+saved");
+  } catch (error: any) {
     console.error("Error updating photo:", error);
+    if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
+      const photo = photoFromBody(req);
+      photo.src = photoUrl || photo.src;
+      const [catRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title FROM categories ORDER BY id ASC");
+      const [collRows] = await pool.query<RowDataPacket[]>("SELECT id, name AS title, description FROM collections ORDER BY id ASC");
+      const [camRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM cameras ORDER BY id ASC");
+      const [lensRows] = await pool.query<RowDataPacket[]>("SELECT id, brand, model FROM lenses ORDER BY id ASC");
+      const [countryRows] = await pool.query<RowDataPacket[]>("SELECT id, country, state FROM countries ORDER BY country ASC, state ASC");
+      return res.status(409).render("photo-form", {
+        nav: "photos",
+        mode: "edit",
+        photo,
+        originalSlug: req.params.slug,
+        returnPage: req.body.page || "",
+        returnSearch: req.body.search || "",
+        categories: catRows,
+        collections: collRows,
+        cameras: camRows,
+        lenses: lensRows,
+        countries: countryRows,
+        error: `A photo with slug "${photo.slug}" already exists. Please choose a different slug.`
+      });
+    }
     res.status(500).send("Error updating photo");
   }
 };
 
 const togglePhoto = async (req: Request, res: Response) => {
   try {
+    const page = req.query.page || "1";
+    const search = req.query.search ? "&search=" + encodeURIComponent(String(req.query.search)) : "";
     await pool.query("UPDATE photos SET live = NOT live WHERE slug = ?", [req.params.slug]);
-    res.redirect("/admin/photos");
+    res.redirect("/admin/photos?page=" + page + search);
   } catch (error) {
     console.error("Error toggling photo:", error);
     res.status(500).send("Error toggling photo");

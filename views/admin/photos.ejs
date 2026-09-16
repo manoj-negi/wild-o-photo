@@ -63,6 +63,7 @@
               </tr>
             <% } %>
             <% photos.forEach(function (p) { %>
+              <% const rowReturn = "?page=" + (typeof pagination !== "undefined" ? pagination.currentPage : 1) + (typeof search !== "undefined" && search ? "&search=" + encodeURIComponent(search) : ""); %>
               <tr class="border-b border-[#f3ede4]"
                   data-cap="<%= p.cap %>" data-slug="<%= p.slug %>" data-category="<%= p.category %>"
                   data-collection="<%= p.collection %>" data-camera="<%= p.camera %>" data-date="<%= p.date %>"
@@ -79,7 +80,7 @@
                 <td class="td truncate text-xs text-mute"><%= p.camera || "-" %></td>
                 <td class="td whitespace-nowrap text-xs text-mute"><%= p.date || "-" %></td>
                 <td class="td">
-                  <form method="post" action="/admin/photos/<%= p.slug %>/toggle">
+                  <form method="post" action="/admin/photos/<%= p.slug %>/toggle<%= rowReturn %>">
                     <button class="rounded-full px-3 py-1 text-[11px] uppercase tracking-wider <%= p.live ? 'border border-pine bg-pine text-cream' : 'border border-line2 bg-white text-mute' %>">
                       <%= p.live ? "Live" : "Draft" %>
                     </button>
@@ -87,9 +88,8 @@
                 </td>
                 <td class="td">
                   <div class="flex justify-end gap-1.5">
-                    <a href="/admin/photos/<%= p.slug %>/edit" class="rounded-full border border-line2 bg-white px-3 py-1.5 text-xs hover:bg-sand">Edit</a>
-                    <% const deleteReturn = "?page=" + (typeof pagination !== "undefined" ? pagination.currentPage : 1) + (typeof search !== "undefined" && search ? "&search=" + encodeURIComponent(search) : ""); %>
-                    <form method="post" action="/admin/photos/<%= p.slug %>/delete<%= deleteReturn %>" data-confirm="Delete <%= p.cap %>?">
+                    <a href="/admin/photos/<%= p.slug %>/edit<%= rowReturn %>" class="rounded-full border border-line2 bg-white px-3 py-1.5 text-xs hover:bg-sand">Edit</a>
+                    <form method="post" action="/admin/photos/<%= p.slug %>/delete<%= rowReturn %>" data-confirm="Delete <%= p.cap %>?">
                       <button type="submit" class="rounded-full border border-line2 bg-white px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 hover:border-red-200">Delete</button>
                     </form>
                   </div>
