@@ -6,7 +6,9 @@
          data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
          data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
          data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>">
-      <div id="gridTrack" class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max pb-14">
+      <div
+  id="gridTrack"
+  class="flex items-center justify-center gap-[14px] px-[1.5vw] my-auto min-w-max pb-14 overflow-visible">
         <%# pb-14 reserves room below the row for the hover caption (top-[calc(100%+18px)]
             on each .photo-item). #gridStrip has overflow-x-auto, which per the CSS Overflow
             spec forces its overflow-y to auto too — without this padding the caption sits
@@ -24,7 +26,9 @@
           for (var gridCopy = 0; gridCopy < 3; gridCopy++) { %>
         <div class="grid-copy flex items-center gap-[14px]">
           <% photos.forEach(function (p) { %>
-          <a href="/photo/<%= p.slug %>" class="photo-item group relative shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)]"
+          <a
+  href="/photo/<%= p.slug %>"
+  class="photo-item group relative inline-block shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)] align-top"
              data-category="<%= p.category %>"
              data-collection="<%= p.collection %>"
              data-camera="<%= p.camera %>"
@@ -42,8 +46,9 @@
           <span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
           <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
           <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-          <span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+18px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
-          </a>
+        <span
+  class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-[0px] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
+          </a> 
           <% }); %>
         </div>
         <%  } %>
