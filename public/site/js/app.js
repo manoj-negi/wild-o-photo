@@ -905,6 +905,21 @@
     "year",
   );
 
+  /* ── Reset filters ───────────────────────────────────────────────── */
+
+  var resetFiltersBtn = document.getElementById("resetFiltersBtn");
+
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener("click", function () {
+      Object.keys(activeFilters).forEach(function (type) {
+        activeFilters[type] = null;
+        updateButtonLabel(type);
+      });
+
+      applyFiltersAfterLoading();
+    });
+  }
+
   /* ── Bottom bar pill highlight ───────────────────────────────────── */
 
   document.querySelectorAll("[data-filter]").forEach(function (b) {
