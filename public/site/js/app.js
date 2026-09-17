@@ -1434,25 +1434,20 @@
     );
   }
 
-  /* ── Grid view — infinite horizontal scroll + pagination ─────────── */
+  /* ── Grid view — horizontal scroll + pagination ──────────────────── */
 
   (function () {
     var track = document.getElementById("gridTrack");
 
     if (!strip || !track) return;
 
-    var copies = Array.prototype.slice.call(
-      track.querySelectorAll(".grid-copy"),
-    );
+    var copy = track.querySelector(".grid-copy");
 
-    if (copies.length === 0) {
+    if (!copy) {
       return;
     }
 
-    var EDGE_TOLERANCE = 4;
     var LOAD_MARGIN = 1200;
-
-    var copyWidth = 0;
 
     var pageSize = parseInt(strip.getAttribute("data-page-size"), 10) || 30;
 
@@ -1460,7 +1455,7 @@
 
     var hasMore = strip.getAttribute("data-has-more") === "1";
 
-    var loading = false;
+    var loadingPromise = null;
 
     function buildGridItem(p) {
       var a = document.createElement("a");
@@ -1506,35 +1501,22 @@
       return a;
     }
 
-    function measure() {
-      copyWidth = strip.scrollWidth / copies.length;
-    }
-
-    function goToStart() {
-      measure();
-
-      if (copyWidth > 0) {
-        strip.scrollLeft = copyWidth;
-      }
-    }
-
     function loadNextPage() {
-      if (loading || !hasMore) {
+      if (!hasMore) {
         return null;
       }
+      if (loadingPromise) {
+        return loadingPromise;
+      }
 
-      loading = true;
-
-      return fetch("/api/photos/grid?offset=" + offset + "&limit=" + pageSize)
+      loadingPromise = fetch("/api/photos/grid?offset=" + offset + "&limit=" + pageSize)
         .then(function (r) {
           return r.json();
         })
         .then(function (data) {
           if (data && data.success && data.photos && data.photos.length) {
-            copies.forEach(function (copyEl) {
-              data.photos.forEach(function (p) {
-                copyEl.appendChild(buildGridItem(p));
-              });
+            data.photos.forEach(function (p) {
+              copy.appendChild(buildGridItem(p));
             });
 
             offset = data.nextOffset;
@@ -1544,11 +1526,13 @@
 
           hasMore = !!(data && data.hasMore);
 
-          loading = false;
+          loadingPromise = null;
         })
         .catch(function () {
-          loading = false;
+          loadingPromise = null;
         });
+
+      return loadingPromise;
     }
 
     function loadAllRemaining() {
@@ -1564,35 +1548,11 @@
     gridLoadAll = loadAllRemaining;
 
     strip.addEventListener("scroll", function () {
-      measure();
-
-      if (copyWidth <= 0) {
-        return;
-      }
-
       var maxScrollLeft = strip.scrollWidth - strip.clientWidth;
 
-      if (
-        hasMore &&
-        (strip.scrollLeft <= LOAD_MARGIN ||
-          strip.scrollLeft >= maxScrollLeft - LOAD_MARGIN)
-      ) {
+      if (hasMore && strip.scrollLeft >= maxScrollLeft - LOAD_MARGIN) {
         loadNextPage();
       }
-
-      if (strip.scrollLeft <= EDGE_TOLERANCE) {
-        strip.scrollLeft += copyWidth;
-      } else if (strip.scrollLeft >= maxScrollLeft - EDGE_TOLERANCE) {
-        strip.scrollLeft -= copyWidth;
-      }
-    });
-
-    window.addEventListener("load", goToStart);
-
-    window.addEventListener("resize", measure);
-
-    requestAnimationFrame(function () {
-      setTimeout(goToStart, 60);
     });
   })();
 
@@ -1625,7 +1585,7 @@
     var hasMore = canvas.getAttribute("data-has-more") === "1";
 
     var nextIndex = offset;
-    var loading = false;
+    var loadingPromise = null;
 
     function buildPhotoItem(p) {
       var a = document.createElement("a");

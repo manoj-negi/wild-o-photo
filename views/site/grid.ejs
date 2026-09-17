@@ -14,16 +14,6 @@
             spec forces its overflow-y to auto too — without this padding the caption sits
             outside the row's natural content height and gets scrolled out of view instead
             of ever being visible on hover. %>
-        <%
-          // Infinite horizontal scroll: the strip is rendered three times in a row so
-          // scrolling past either end always has more (duplicate) content to scroll into.
-          // app.js watches for the native scroll hitting either hard edge and silently
-          // jumps back one copy's width, so the strip never runs out of photos to scroll.
-          // Each copy is its own flex container (rather than one flat list of items) so
-          // that loading another page can append new photos to the tail of each copy in
-          // place — the existing nodes never move or get rebuilt, so scrollLeft (and the
-          // visitor's scroll position) stays exactly where it was.
-          for (var gridCopy = 0; gridCopy < 3; gridCopy++) { %>
         <div class="grid-copy flex items-center gap-[14px]">
           <% photos.forEach(function (p) { %>
           <a
@@ -48,10 +38,9 @@
           <span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
         <span
   class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-[0px] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"><%= p.cap %></span>
-          </a> 
+          </a>
           <% }); %>
         </div>
-        <%  } %>
       </div>
     </div>
   </main>
