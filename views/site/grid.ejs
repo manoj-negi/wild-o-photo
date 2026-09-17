@@ -2,7 +2,7 @@
 <%- include('partials/head', { title: title }) %>
 <%- include('partials/header', { view: 'grid' }) %>
   <main class="h-screen flex items-center justify-center overflow-hidden py-12">
-    <div id="gridStrip" class="w-full overflow-x-auto no-bar flex justify-center"
+    <div id="gridStrip" class="w-full overflow-x-auto no-bar flex justify-start"
          data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
          data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
          data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>">
