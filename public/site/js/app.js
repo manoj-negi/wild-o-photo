@@ -463,10 +463,18 @@
     if (active) {
       var short = active.length > 16 ? active.substring(0, 14) + "…" : active;
 
-      labelEl.innerHTML = defaultLabels[type] + ' <span class="ml-1.5 px-2 py-0.5 rounded-[6px] bg-black/5 dark:bg-white/10 text-[13px] text-ink dark:text-white font-medium">' + esc(short) + '</span>';
+      labelEl.innerHTML =
+        defaultLabels[type] +
+        ' <span class="ml-1.5 px-2 py-0.5 rounded-[6px] bg-black/5 dark:bg-white/10 text-[13px] text-ink dark:text-white font-medium">' +
+        esc(short) +
+        "</span>";
 
       btn.classList.add("text-ink", "dark:text-white");
-      btn.classList.remove("text-ink/75", "dark:text-white/75", "text-[#c8a03c]");
+      btn.classList.remove(
+        "text-ink/75",
+        "dark:text-white/75",
+        "text-[#c8a03c]",
+      );
     } else {
       labelEl.textContent = defaultLabels[type];
 
@@ -476,7 +484,6 @@
   }
 
   /* ── Generic popup wiring ─────────────────────────────────────────── */
-
 
   function wirePopup(menuEl, triggerBtn, filterType) {
     if (!menuEl || !triggerBtn) return;
@@ -1468,7 +1475,7 @@
       a.href = "/photo/" + encodeURIComponent(p.slug);
 
       a.className =
-        "photo-item group relative shrink-0 h-[43.3vh] max-h-[calc(100vh-460px)]";
+        "photo-item group relative shrink-0 overflow-visible h-[43.3vh] max-h-[calc(100vh-460px)]";
 
       a.setAttribute("data-category", p.category || "");
 
@@ -1495,10 +1502,10 @@
         '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
         "</span>" +
         "</span>" +
-        '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -left-[12px] w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute -top-[12px] -right-[12px] w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -left-[12px] w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute -bottom-[12px] -right-[12px] w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[4px] -translate-y-[4px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[4px] -translate-y-[4px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[4px] translate-y-[4px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[4px] translate-y-[4px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-[0px] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
         "</span>";
@@ -1642,7 +1649,7 @@
        * Provides the vertical masonry gap.
        */
       a.className =
-        "photo-item group relative block break-inside-avoid hover:z-10 focus-visible:z-10 mb-4 md:mb-6";
+        "photo-item group relative block break-inside-avoid overflow-visible hover:z-10 focus-visible:z-10 mt-[8px] mb-4 md:mb-6";
 
       a.setAttribute("data-index", nextIndex++);
 
@@ -1671,11 +1678,11 @@
         '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
         "</span>" +
         "</span>" +
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+-4px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[3px] -translate-y-[3px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[3px] -translate-y-[3px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[3px] translate-y-[3px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[3px] translate-y-[3px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+-2px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
         "</span>";
 
@@ -1767,7 +1774,10 @@
     backBtn.addEventListener("click", function (e) {
       e.preventDefault();
 
-      if (document.referrer && document.referrer.indexOf(window.location.host) !== -1) {
+      if (
+        document.referrer &&
+        document.referrer.indexOf(window.location.host) !== -1
+      ) {
         window.history.back();
       } else {
         window.location.href = "/";
