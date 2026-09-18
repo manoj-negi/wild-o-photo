@@ -87,12 +87,7 @@ const createCountry = async (req: Request, res: Response) => {
       [country, state]
     );
 
-    const [rows] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS total FROM countries");
-    const total = (rows[0] as any).total;
-    const limit = 8;
-    const totalPages = Math.ceil(total / limit) || 1;
-
-    res.redirect("/admin/countries?page=" + totalPages + "&flash=Country+added");
+    res.redirect("/admin/countries?page=1&flash=Country+added");
   } catch (error: any) {
     console.error("Error creating country:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {

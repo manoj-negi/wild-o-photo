@@ -17,7 +17,7 @@ const getLenses = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBLensRow[]>(
-      "SELECT id, brand, model, created_at, updated_at FROM lenses ORDER BY id ASC"
+      "SELECT id, brand, model, created_at, updated_at FROM lenses ORDER BY id DESC"
     );
 
     const [catRows] = await pool.query<RowDataPacket[]>(
@@ -92,12 +92,7 @@ const createLens = async (req: Request, res: Response) => {
       [brand || null, model]
     );
 
-    const [rows] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS total FROM lenses");
-    const total = (rows[0] as any).total;
-    const limit = 8;
-    const totalPages = Math.ceil(total / limit) || 1;
-
-    res.redirect("/admin/lenses?page=" + totalPages + "&flash=Lens+added");
+    res.redirect("/admin/lenses?page=1&flash=Lens+added");
   } catch (error: any) {
     console.error("Error creating lens:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
@@ -182,7 +177,7 @@ const getLensesAPI = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBLensRow[]>(
-      "SELECT id, brand, model, created_at, updated_at FROM lenses ORDER BY id ASC"
+      "SELECT id, brand, model, created_at, updated_at FROM lenses ORDER BY id DESC"
     );
 
     if (search) {

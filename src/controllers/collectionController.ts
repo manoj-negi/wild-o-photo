@@ -17,7 +17,7 @@ const getCollections = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBCollectionRow[]>(
-      "SELECT id, name AS title, name, description, cover_photo_id FROM collections ORDER BY id ASC"
+      "SELECT id, name AS title, name, description, cover_photo_id FROM collections ORDER BY id DESC"
     );
 
     const [catRows] = await pool.query<RowDataPacket[]>(
@@ -81,12 +81,7 @@ const createCollection = async (req: Request, res: Response) => {
       [title, description]
     );
 
-    const [rows] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS total FROM collections");
-    const total = (rows[0] as any).total;
-    const limit = 8;
-    const totalPages = Math.ceil(total / limit) || 1;
-
-    res.redirect("/admin/collections?page=" + totalPages + "&flash=Collection+created");
+    res.redirect("/admin/collections?page=1&flash=Collection+created");
   } catch (error: any) {
     console.error("Error creating collection:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
@@ -159,7 +154,7 @@ const getCollectionsAPI = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBCollectionRow[]>(
-      "SELECT id, name AS title, name, description, cover_photo_id FROM collections ORDER BY id ASC"
+      "SELECT id, name AS title, name, description, cover_photo_id FROM collections ORDER BY id DESC"
     );
 
     if (search) {

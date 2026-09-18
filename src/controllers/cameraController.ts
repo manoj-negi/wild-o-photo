@@ -17,7 +17,7 @@ const getCameras = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBCameraRow[]>(
-      "SELECT id, brand, model, created_at, updated_at FROM cameras ORDER BY id ASC"
+      "SELECT id, brand, model, created_at, updated_at FROM cameras ORDER BY id DESC"
     );
 
     const [catRows] = await pool.query<RowDataPacket[]>(
@@ -87,12 +87,7 @@ const createCamera = async (req: Request, res: Response) => {
       [brand, model]
     );
 
-    const [rows] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS total FROM cameras");
-    const total = (rows[0] as any).total;
-    const limit = 8;
-    const totalPages = Math.ceil(total / limit) || 1;
-
-    res.redirect("/admin/cameras?page=" + totalPages + "&flash=Camera+added");
+    res.redirect("/admin/cameras?page=1&flash=Camera+added");
   } catch (error: any) {
     console.error("Error creating camera:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
@@ -175,7 +170,7 @@ const getCamerasAPI = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBCameraRow[]>(
-      "SELECT id, brand, model, created_at, updated_at FROM cameras ORDER BY id ASC"
+      "SELECT id, brand, model, created_at, updated_at FROM cameras ORDER BY id DESC"
     );
 
     if (search) {

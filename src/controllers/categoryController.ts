@@ -16,7 +16,7 @@ const getCategories = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBCategoryRow[]>(
-      "SELECT id, name AS title, parent, description FROM categories ORDER BY id ASC"
+      "SELECT id, name AS title, parent, description FROM categories ORDER BY id DESC"
     );
 
     const [photoRows] = await pool.query<RowDataPacket[]>(
@@ -77,12 +77,7 @@ const createCategory = async (req: Request, res: Response) => {
       [title, parent, description]
     );
 
-    const [rows] = await pool.query<RowDataPacket[]>("SELECT COUNT(*) AS total FROM categories");
-    const total = (rows[0] as any).total;
-    const limit = 8;
-    const totalPages = Math.ceil(total / limit) || 1;
-
-    res.redirect("/admin/categories?page=" + totalPages + "&flash=Category+created");
+    res.redirect("/admin/categories?page=1&flash=Category+created");
   } catch (error: any) {
     console.error("Error creating category:", error);
     if (error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062)) {
@@ -160,7 +155,7 @@ const getCategoriesAPI = async (req: Request, res: Response) => {
     const search = String(req.query.search || req.query.q || "").trim();
 
     let [allRows] = await pool.query<DBCategoryRow[]>(
-      "SELECT id, name AS title, parent, description FROM categories ORDER BY id ASC"
+      "SELECT id, name AS title, parent, description FROM categories ORDER BY id DESC"
     );
 
     if (search) {
