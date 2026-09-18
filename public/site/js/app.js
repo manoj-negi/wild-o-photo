@@ -239,17 +239,19 @@
     if (!qs) return;
     var pairs = qs.split("&");
     var hasActive = false;
-    pairs.forEach(function (pair) {
-      var kv = pair.split("=");
+    // Filters are single-select across types (see clearOtherFilters), so a
+    // link carrying more than one filter param only honors the first match.
+    for (var i = 0; i < pairs.length && !hasActive; i++) {
+      var kv = pairs[i].split("=");
       if (kv.length === 2) {
         var key = decodeURIComponent(kv[0]);
         var val = decodeURIComponent(kv[1]);
-        if (activeFilters.hasOwnProperty(key)) {
+        if (activeFilters.hasOwnProperty(key) && val) {
           activeFilters[key] = val;
           hasActive = true;
         }
       }
-    });
+    }
 
     if (hasActive) {
       document.addEventListener("DOMContentLoaded", function () {
@@ -288,6 +290,30 @@
    */
   var flowLoadAll = null;
   var gridLoadAll = null;
+
+  // Set by the Location menu once it renders, so other filter types can
+  // refresh its radio-button highlighting when they clear it out.
+  var refreshLocationUI = null;
+
+  /*
+   * Filters are single-select ACROSS types: picking a value in one menu
+   * (e.g. Camera) clears whatever was active in every other menu (Category,
+   * Collections, Lens, Location, Year), so only one filter is ever active
+   * at a time instead of silently intersecting with a stale prior choice.
+   */
+  function clearOtherFilters(exceptType) {
+    Object.keys(activeFilters).forEach(function (type) {
+      if (type === exceptType) return;
+      if (!activeFilters[type]) return;
+
+      activeFilters[type] = null;
+      updateButtonLabel(type);
+
+      if (type === "country" && refreshLocationUI) {
+        refreshLocationUI();
+      }
+    });
+  }
 
   function applyFiltersAfterLoading() {
     var hasActive = Object.keys(activeFilters).some(function (k) {
@@ -384,6 +410,7 @@
     if (activeFilters[type] === value) {
       activeFilters[type] = null;
     } else {
+      clearOtherFilters(type);
       activeFilters[type] = value;
     }
 
@@ -760,6 +787,8 @@
       }
     }
 
+    refreshLocationUI = rerender;
+
     fetch("/api/countries")
       .then(function (r) {
         return r.json();
@@ -859,12 +888,16 @@
                 ? null
                 : "country::" + val;
 
+            if (newFilter) clearOtherFilters("country");
+
             activeFilters.country = newFilter;
           } else {
             var newFilter =
               activeFilters.country === "state::" + val
                 ? null
                 : "state::" + val;
+
+            if (newFilter) clearOtherFilters("country");
 
             activeFilters.country = newFilter;
           }
@@ -1592,7 +1625,7 @@
     var hasMore = canvas.getAttribute("data-has-more") === "1";
 
     var nextIndex = offset;
-    var loadingPromise = null;
+    var loading = false;
 
     function buildPhotoItem(p) {
       var a = document.createElement("a");
