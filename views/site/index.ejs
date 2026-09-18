@@ -1,3 +1,4 @@
+
 <%# views/index.ejs — flow view %>
 
 <%- include('partials/head', { title: title }) %>
@@ -8,7 +9,7 @@
 
   <div
     id="flowCanvas"
-  class="columns-2 md:columns-4 gap-4 md:gap-6 px-4 md:px-9 pt-6 pb-18"
+    class="columns-2 md:columns-4 gap-4 md:gap-6 px-4 md:px-9 pt-6 pb-18 overflow-visible"
     data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
     data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
     data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>"
@@ -18,7 +19,7 @@
 
       <a
         href="/photo/<%= p.slug %>"
-       class="photo-item group relative block break-inside-avoid overflow-visible mb-4 md:mb-6 hover:z-10 focus-visible:z-10"
+        class="photo-item group relative block break-inside-avoid overflow-visible mb-4 md:mb-6 hover:z-10 focus-visible:z-10"
         data-index="<%= i %>"
         data-category="<%= p.category %>"
         data-collection="<%= p.collection %>"
@@ -58,31 +59,32 @@
           </span>
         </span>
 
-        <!-- Top left corner -->
-<span
-  aria-hidden="true"
-  class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-></span>
+        <!-- Hover frame -->
 
-<span
-  aria-hidden="true"
-  class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-></span>
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[3px] -translate-y-[3px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        ></span>
 
-<span
-  aria-hidden="true"
-  class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-></span>
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[3px] -translate-y-[3px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        ></span>
 
-<span
-  aria-hidden="true"
-  class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-></span>
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[3px] translate-y-[3px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        ></span>
+
+        <span
+          aria-hidden="true"
+          class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[3px] translate-y-[3px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+        ></span>
 
         <!-- Caption -->
 
         <span
-          class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+-4px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+          class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+-2px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
         >
           <%= p.cap %>
         </span>
