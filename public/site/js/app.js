@@ -983,58 +983,100 @@
 
     var viewport = document.getElementById("railViewport");
 
-    var prevBtn = document.getElementById("railPrev");
-
-    var nextBtn = document.getElementById("railNext");
-
     var mainPhoto = document.getElementById("mainPhoto");
 
     if (!track || !viewport) return;
 
-    var thumbs = Array.prototype.slice.call(
+    var realThumbs = Array.prototype.slice.call(
       track.querySelectorAll(".rail-thumb"),
     );
 
-    if (thumbs.length === 0) return;
+    if (realThumbs.length === 0) return;
 
-    var currentIdx = 0;
-    var STEP = 1;
+    var REAL_COUNT = realThumbs.length;
 
-    var activeIdx = 0;
+    // Clone a few thumbs from each end and splice them in before/after the
+    // real list, so scrolling past either end keeps gliding into more
+    // thumbnails instead of stopping — the rail loops forever. Enough clones
+    // that a short burst of rapid steps never runs past the cloned runway
+    // before normalizeAfterSettle() below can quietly fold the index back
+    // into the real range.
+    var CLONE_COUNT = REAL_COUNT > 1 ? Math.min(6, REAL_COUNT) : 0;
+
+    realThumbs.forEach(function (el, i) {
+      el.dataset.realIndex = String(i);
+    });
+
+    // The rail's <img loading="lazy"> only fetches once an element is near
+    // the real browser viewport — but the track is one very tall flex column
+    // that we move with a CSS transform, so most thumbs sit far outside the
+    // viewport at all times regardless of which one is visually centered.
+    // The wrap-around thumbs at each end are exactly the ones a first-time
+    // visitor is least likely to have scrolled near yet, so without this
+    // they're still unfetched the moment the loop reaches them — eager-load
+    // just this small set (source thumbs + their clones) upfront instead.
+    function forceEagerImage(el) {
+      var img = el.querySelector("img");
+
+      if (img) {
+        img.loading = "eager";
+      }
+    }
+
+    function cloneThumb(el) {
+      var clone = el.cloneNode(true);
+
+      clone.setAttribute("aria-hidden", "true");
+      clone.tabIndex = -1;
+      forceEagerImage(clone);
+
+      return clone;
+    }
+
+    if (CLONE_COUNT > 0) {
+      var headSource = realThumbs.slice(REAL_COUNT - CLONE_COUNT);
+
+      var tailSource = realThumbs.slice(0, CLONE_COUNT);
+
+      headSource.forEach(forceEagerImage);
+      tailSource.forEach(forceEagerImage);
+
+      var headClones = headSource.map(cloneThumb);
+
+      var tailClones = tailSource.map(cloneThumb);
+
+      headClones.forEach(function (c) {
+        track.insertBefore(c, realThumbs[0]);
+      });
+
+      tailClones.forEach(function (c) {
+        track.appendChild(c);
+      });
+    }
+
+    // Rendered order: [tail-of-real clones] + [real thumbs] + [head-of-real clones].
+    var els = Array.prototype.slice.call(
+      track.querySelectorAll(".rail-thumb"),
+    );
+
+    var REAL_START = CLONE_COUNT;
+
+    var activeIdx = REAL_START;
 
     if (mainPhoto) {
-      for (var mi = 0; mi < thumbs.length; mi++) {
+      for (var mi = 0; mi < REAL_COUNT; mi++) {
         if (
-          thumbs[mi].getAttribute("data-src") === mainPhoto.getAttribute("src")
+          realThumbs[mi].getAttribute("data-src") ===
+          mainPhoto.getAttribute("src")
         ) {
-          activeIdx = mi;
+          activeIdx = REAL_START + mi;
           break;
         }
       }
     }
 
-    function thumbUnitHeight() {
-      if (thumbs.length < 2) {
-        return thumbs[0].offsetHeight + 8;
-      }
-
-      var rect0 = thumbs[0].getBoundingClientRect();
-
-      var rect1 = thumbs[1].getBoundingClientRect();
-
-      return rect1.top - rect0.top;
-    }
-
-    function visibleCount() {
-      var unit = thumbUnitHeight();
-
-      return unit > 0
-        ? Math.max(1, Math.floor(viewport.clientHeight / unit))
-        : 4;
-    }
-
     function centerThumb(idx, animate) {
-      var activeThumb = thumbs[idx];
+      var activeThumb = els[idx];
 
       if (!activeThumb) return;
 
@@ -1166,12 +1208,14 @@
     var heightPattern = [56, 72, 52, 64, 70, 54, 60];
 
     function updateDynamicLayout(animate) {
-      thumbs.forEach(function (el, i) {
+      els.forEach(function (el, i) {
         var dist = Math.abs(i - activeIdx);
 
         var ml = dist < offsetsPattern.length ? offsetsPattern[dist] : 8;
 
-        var h = heightPattern[i % heightPattern.length];
+        var realIdx = Number(el.dataset.realIndex) || 0;
+
+        var h = heightPattern[realIdx % heightPattern.length];
 
         el.style.transition =
           animate === false
@@ -1186,14 +1230,47 @@
       });
     }
 
+    // If activeIdx is currently sitting on a cloned thumb, silently re-point
+    // it at the matching real thumb (identical photo, identical layout)
+    // *before* the next step is applied — not after some "settle" delay.
+    // Waiting for a quiet gap (the previous approach) broke down under a
+    // sustained scroll/held-arrow-key: each step kept pushing activeIdx one
+    // further into the clone zone, and since CLONE_COUNT is finite, a long
+    // enough burst ran clean off the end of the cloned runway and froze the
+    // rail (els[activeIdx] became undefined) until the user paused. Folding
+    // back just-in-time, on every step, means activeIdx can never drift more
+    // than one clone-hop from the real range, no matter how long or fast the
+    // scrolling continues.
+    function normalizeIfOutOfRange() {
+      if (CLONE_COUNT === 0) return;
+
+      if (activeIdx < REAL_START || activeIdx >= REAL_START + REAL_COUNT) {
+        var real =
+          (((activeIdx - REAL_START) % REAL_COUNT) + REAL_COUNT) %
+          REAL_COUNT;
+
+        activeIdx = REAL_START + real;
+
+        updateDynamicLayout(false);
+
+        centerThumb(activeIdx, false);
+
+        // Force the browser to actually commit this untransitioned frame
+        // instead of batching it away, so the very next (animated) step
+        // below visibly glides from the corrected position, not from
+        // wherever the clone left off.
+        void track.offsetHeight;
+      }
+    }
+
     function setActivePhoto(idx) {
-      if (thumbs.length === 0) {
+      if (els.length === 0) {
         return;
       }
 
-      activeIdx = Math.max(0, Math.min(thumbs.length - 1, idx));
+      activeIdx = idx;
 
-      var th = thumbs[activeIdx];
+      var th = els[activeIdx];
 
       selectThumb(th);
 
@@ -1203,9 +1280,11 @@
     }
 
     function stepActivePhoto(delta) {
-      if (thumbs.length === 0) {
+      if (els.length === 0) {
         return;
       }
+
+      normalizeIfOutOfRange();
 
       setActivePhoto(activeIdx + delta);
     }
@@ -1215,14 +1294,29 @@
 
       centerThumb(activeIdx, false);
 
-      markActive(thumbs[activeIdx]);
+      markActive(els[activeIdx]);
     }
 
     requestAnimationFrame(function () {
       setTimeout(init, 60);
     });
 
-    var lastWheelTime = 0;
+    // Shared by wheel and keyboard so a held-down arrow key can't out-pace
+    // the cloned runway (see CLONE_COUNT above) before normalizeAfterSettle
+    // gets a chance to fold the index back into range.
+    var lastStepTime = 0;
+
+    function throttledStep(delta) {
+      var now = Date.now();
+
+      if (now - lastStepTime < 250) {
+        return;
+      }
+
+      lastStepTime = now;
+
+      stepActivePhoto(delta);
+    }
 
     document.addEventListener(
       "wheel",
@@ -1231,18 +1325,10 @@
           return;
         }
 
-        var now = Date.now();
-
-        if (now - lastWheelTime < 250) {
-          return;
-        }
-
-        lastWheelTime = now;
-
         if (e.deltaY > 0) {
-          stepActivePhoto(1);
+          throttledStep(1);
         } else if (e.deltaY < 0) {
-          stepActivePhoto(-1);
+          throttledStep(-1);
         }
       },
       {
@@ -1252,15 +1338,15 @@
 
     document.addEventListener("keydown", function (e) {
       if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
-        stepActivePhoto(-1);
+        throttledStep(-1);
       }
 
       if (e.key === "ArrowDown" || e.key === "ArrowRight") {
-        stepActivePhoto(1);
+        throttledStep(1);
       }
     });
 
-    thumbs.forEach(function (th, i) {
+    els.forEach(function (th, i) {
       th.addEventListener("click", function (e) {
         e.preventDefault();
 
