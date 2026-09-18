@@ -239,19 +239,17 @@
     if (!qs) return;
     var pairs = qs.split("&");
     var hasActive = false;
-    // Filters are single-select across types (see clearOtherFilters), so a
-    // link carrying more than one filter param only honors the first match.
-    for (var i = 0; i < pairs.length && !hasActive; i++) {
-      var kv = pairs[i].split("=");
+    pairs.forEach(function (pair) {
+      var kv = pair.split("=");
       if (kv.length === 2) {
         var key = decodeURIComponent(kv[0]);
         var val = decodeURIComponent(kv[1]);
-        if (activeFilters.hasOwnProperty(key) && val) {
+        if (activeFilters.hasOwnProperty(key)) {
           activeFilters[key] = val;
           hasActive = true;
         }
       }
-    }
+    });
 
     if (hasActive) {
       document.addEventListener("DOMContentLoaded", function () {
@@ -290,30 +288,6 @@
    */
   var flowLoadAll = null;
   var gridLoadAll = null;
-
-  // Set by the Location menu once it renders, so other filter types can
-  // refresh its radio-button highlighting when they clear it out.
-  var refreshLocationUI = null;
-
-  /*
-   * Filters are single-select ACROSS types: picking a value in one menu
-   * (e.g. Camera) clears whatever was active in every other menu (Category,
-   * Collections, Lens, Location, Year), so only one filter is ever active
-   * at a time instead of silently intersecting with a stale prior choice.
-   */
-  function clearOtherFilters(exceptType) {
-    Object.keys(activeFilters).forEach(function (type) {
-      if (type === exceptType) return;
-      if (!activeFilters[type]) return;
-
-      activeFilters[type] = null;
-      updateButtonLabel(type);
-
-      if (type === "country" && refreshLocationUI) {
-        refreshLocationUI();
-      }
-    });
-  }
 
   function applyFiltersAfterLoading() {
     var hasActive = Object.keys(activeFilters).some(function (k) {
@@ -410,7 +384,6 @@
     if (activeFilters[type] === value) {
       activeFilters[type] = null;
     } else {
-      clearOtherFilters(type);
       activeFilters[type] = value;
     }
 
@@ -787,8 +760,6 @@
       }
     }
 
-    refreshLocationUI = rerender;
-
     fetch("/api/countries")
       .then(function (r) {
         return r.json();
@@ -888,16 +859,12 @@
                 ? null
                 : "country::" + val;
 
-            if (newFilter) clearOtherFilters("country");
-
             activeFilters.country = newFilter;
           } else {
             var newFilter =
               activeFilters.country === "state::" + val
                 ? null
                 : "state::" + val;
-
-            if (newFilter) clearOtherFilters("country");
 
             activeFilters.country = newFilter;
           }
@@ -1474,20 +1441,25 @@
     );
   }
 
-  /* ── Grid view — horizontal scroll + pagination ──────────────────── */
+  /* ── Grid view — infinite horizontal scroll + pagination ─────────── */
 
   (function () {
     var track = document.getElementById("gridTrack");
 
     if (!strip || !track) return;
 
-    var copy = track.querySelector(".grid-copy");
+    var copies = Array.prototype.slice.call(
+      track.querySelectorAll(".grid-copy"),
+    );
 
-    if (!copy) {
+    if (copies.length === 0) {
       return;
     }
 
+    var EDGE_TOLERANCE = 4;
     var LOAD_MARGIN = 1200;
+
+    var copyWidth = 0;
 
     var pageSize = parseInt(strip.getAttribute("data-page-size"), 10) || 30;
 
@@ -1495,7 +1467,7 @@
 
     var hasMore = strip.getAttribute("data-has-more") === "1";
 
-    var loadingPromise = null;
+    var loading = false;
 
     function buildGridItem(p) {
       var a = document.createElement("a");
@@ -1541,22 +1513,35 @@
       return a;
     }
 
+    function measure() {
+      copyWidth = strip.scrollWidth / copies.length;
+    }
+
+    function goToStart() {
+      measure();
+
+      if (copyWidth > 0) {
+        strip.scrollLeft = copyWidth;
+      }
+    }
+
     function loadNextPage() {
-      if (!hasMore) {
+      if (loading || !hasMore) {
         return null;
       }
-      if (loadingPromise) {
-        return loadingPromise;
-      }
 
-      loadingPromise = fetch("/api/photos/grid?offset=" + offset + "&limit=" + pageSize)
+      loading = true;
+
+      return fetch("/api/photos/grid?offset=" + offset + "&limit=" + pageSize)
         .then(function (r) {
           return r.json();
         })
         .then(function (data) {
           if (data && data.success && data.photos && data.photos.length) {
-            data.photos.forEach(function (p) {
-              copy.appendChild(buildGridItem(p));
+            copies.forEach(function (copyEl) {
+              data.photos.forEach(function (p) {
+                copyEl.appendChild(buildGridItem(p));
+              });
             });
 
             offset = data.nextOffset;
@@ -1566,13 +1551,11 @@
 
           hasMore = !!(data && data.hasMore);
 
-          loadingPromise = null;
+          loading = false;
         })
         .catch(function () {
-          loadingPromise = null;
+          loading = false;
         });
-
-      return loadingPromise;
     }
 
     function loadAllRemaining() {
@@ -1588,11 +1571,35 @@
     gridLoadAll = loadAllRemaining;
 
     strip.addEventListener("scroll", function () {
+      measure();
+
+      if (copyWidth <= 0) {
+        return;
+      }
+
       var maxScrollLeft = strip.scrollWidth - strip.clientWidth;
 
-      if (hasMore && strip.scrollLeft >= maxScrollLeft - LOAD_MARGIN) {
+      if (
+        hasMore &&
+        (strip.scrollLeft <= LOAD_MARGIN ||
+          strip.scrollLeft >= maxScrollLeft - LOAD_MARGIN)
+      ) {
         loadNextPage();
       }
+
+      if (strip.scrollLeft <= EDGE_TOLERANCE) {
+        strip.scrollLeft += copyWidth;
+      } else if (strip.scrollLeft >= maxScrollLeft - EDGE_TOLERANCE) {
+        strip.scrollLeft -= copyWidth;
+      }
+    });
+
+    window.addEventListener("load", goToStart);
+
+    window.addEventListener("resize", measure);
+
+    requestAnimationFrame(function () {
+      setTimeout(goToStart, 60);
     });
   })();
 
@@ -1632,50 +1639,41 @@
 
       a.href = "/photo/" + encodeURIComponent(p.slug);
 
-      /*
-       * break-inside-avoid:
-       *
-       * Prevents one photo from being split between two CSS columns.
-       *
-       * mb-4 / md:mb-6:
-       *
-       * Provides the vertical masonry gap.
-       */
       a.className =
-        "photo-item group relative block break-inside-avoid overflow-visible hover:z-10 focus-visible:z-10 mt-[8px] mb-4 md:mb-6";
+        "photo-item group block break-inside-avoid overflow-visible mb-4 md:mb-6 hover:z-10 focus-visible:z-10";
 
       a.setAttribute("data-index", nextIndex++);
-
       a.setAttribute("data-category", p.category || "");
-
       a.setAttribute("data-collection", p.collection || "");
-
       a.setAttribute("data-camera", p.camera || "");
-
       a.setAttribute("data-lens", p.lens || "");
-
       a.setAttribute("data-country", p.country || "");
-
       a.setAttribute("data-state", p.state || "");
-
       a.setAttribute("data-year", p.year || "");
 
       a.innerHTML =
+        '<div class="relative">' +
         '<img src="' +
         escAttr(p.src) +
         '" alt="' +
         escAttr(p.alt) +
         '" class="block w-full h-auto select-none">' +
+        // Center plus icon
         '<span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
-        '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
+        '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">' +
+        '<path d="M12 5v14M5 12h14"></path>' +
+        "</svg>" +
         "</span>" +
         "</span>" +
+        // Hover frame
         '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[3px] -translate-y-[3px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[3px] -translate-y-[3px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[3px] translate-y-[3px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[3px] translate-y-[3px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-[calc(100%+-2px)] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        "</div>" +
+        // Caption
+        '<span class="pointer-events-none block h-[0px] -mt-0.5 text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
         "</span>";
 
