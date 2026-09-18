@@ -1269,6 +1269,69 @@
     });
   })();
 
+  /* ── Detail page — click the main photo to expand it full-width ─────── */
+
+  (function () {
+    var mainPhoto = document.getElementById("mainPhoto");
+    var overlay = document.getElementById("photoZoomOverlay");
+    var zoomImg = document.getElementById("photoZoomImg");
+    var customCursor = document.getElementById("zoomCursor");
+
+    if (!mainPhoto || !overlay || !zoomImg) return;
+
+    function updateCursor(e) {
+      if (!customCursor) return;
+      customCursor.style.left = e.clientX + "px";
+      customCursor.style.top = e.clientY + "px";
+    }
+
+    function openZoom() {
+      zoomImg.src = mainPhoto.src;
+      zoomImg.alt = mainPhoto.alt || "";
+
+      overlay.classList.remove("hidden");
+      overlay.classList.add("flex");
+
+      document.body.style.overflow = "hidden";
+      
+      if (customCursor) {
+        customCursor.classList.remove("opacity-0");
+      }
+    }
+
+    function closeZoom() {
+      overlay.classList.add("hidden");
+      overlay.classList.remove("flex");
+
+      document.body.style.overflow = "";
+      
+      if (customCursor) {
+        customCursor.classList.add("opacity-0");
+      }
+    }
+
+    mainPhoto.addEventListener("click", openZoom);
+
+    overlay.addEventListener("click", closeZoom);
+    
+    overlay.addEventListener("mousemove", updateCursor);
+    
+    overlay.addEventListener("mouseenter", function(e) {
+      if (customCursor) customCursor.classList.remove("opacity-0");
+      updateCursor(e);
+    });
+    
+    overlay.addEventListener("mouseleave", function() {
+      if (customCursor) customCursor.classList.add("opacity-0");
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !overlay.classList.contains("hidden")) {
+        closeZoom();
+      }
+    });
+  })();
+
   /* ── Detail page — details panel drawer ──────────────────────────── */
 
   var panel = document.getElementById("detailsPanel");

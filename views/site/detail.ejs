@@ -83,12 +83,30 @@
             class="h-screen flex flex-col items-center justify-center pt-20 pb-4 px-4 md:pl-[180px] md:pr-[120px] transition-all duration-500 ease-out">
             <div class="flex-1 flex items-center justify-center w-full min-h-0">
               <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>"
-                class="fade-up max-h-full w-auto max-w-full object-contain block">
+                class="fade-up max-h-full w-auto max-w-full object-contain block cursor-zoom-in">
             </div>
             <a href="/" id="photoBackBtn"
               class="shrink-0 py-3 text-[18px] font-black tracking-[0.04em] uppercase flex items-center justify-center gap-2 hover:opacity-60 transition-opacity">&larr;&nbsp;
               BACK</a>
           </main>
+
+          <%# ── Full-width zoom overlay — click the main photo to expand it with a left/right gutter;
+            click again (or the backdrop, or Esc) to shrink it back. ── %>
+            <div id="photoZoomOverlay"
+              class="fixed inset-0 z-40 hidden items-center justify-center bg-black/95 px-4 sm:px-10 md:px-20 py-8" style="cursor: none;">
+              <img id="photoZoomImg" src="" alt="" class="max-h-full max-w-full w-auto h-auto object-contain">
+              
+              <%# ── Custom close cursor that follows mouse ── %>
+              <div id="zoomCursor" class="pointer-events-none fixed z-50 flex items-center justify-center w-[54px] h-[54px] border border-black/10 bg-white/30 backdrop-blur-md rounded-sm shadow-sm transition-opacity duration-200 opacity-0 -translate-x-1/2 -translate-y-1/2" style="left: -100px; top: -100px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.5" stroke-linecap="round">
+                  <path d="M18 6L6 18M6 6l12 12"/>
+                </svg>
+                <span class="absolute top-[6px] left-[6px] w-[8px] h-[8px] border-t-2 border-l-2 border-black/80"></span>
+                <span class="absolute top-[6px] right-[6px] w-[8px] h-[8px] border-t-2 border-r-2 border-black/80"></span>
+                <span class="absolute bottom-[6px] left-[6px] w-[8px] h-[8px] border-b-2 border-l-2 border-black/80"></span>
+                <span class="absolute bottom-[6px] right-[6px] w-[8px] h-[8px] border-b-2 border-r-2 border-black/80"></span>
+              </div>
+            </div>
 
           <%# ── Details side-panel (Hidden by default until '+' clicked) ───────────────────────── %>
             <% var d=details; %>
