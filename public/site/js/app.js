@@ -117,6 +117,8 @@
     return (
       '<button type="button" data-name="' +
       escAttr(name) +
+      '" data-count="' +
+      (count || 0) +
       '"' +
       ' class="oww-filter-item w-full flex items-center justify-between px-4 py-1.5 text-[15px] text-left' +
       ' hover:bg-black/[0.04] dark:hover:bg-white/[0.06] transition-colors">' +
@@ -234,12 +236,30 @@
     year: null,
   };
 
+  // How many photos match the currently active value for each filter type —
+  // shown alongside the value in the filter bar's pill. Populated whenever a
+  // value is picked from a dropdown (each menu item already carries its own
+  // count) or, for a filter restored from the URL on load, once that menu's
+  // data has finished loading and we can look the count up.
+  var activeFilterCounts = {
+    category: null,
+    collection: null,
+    camera: null,
+    lens: null,
+    country: null,
+    year: null,
+  };
+
   (function initFiltersFromURL() {
     var qs = window.location.search.substring(1);
     if (!qs) return;
     var pairs = qs.split("&");
     var hasActive = false;
     pairs.forEach(function (pair) {
+      // Only one filter is ever active at a time — an older shared link with
+      // several filter params keeps just the first one it finds.
+      if (hasActive) return;
+
       var kv = pair.split("=");
       if (kv.length === 2) {
         var key = decodeURIComponent(kv[0]);
@@ -380,11 +400,28 @@
     });
   }
 
-  function setFilter(type, value) {
+  // Only one filter can be active at a time — picking a new one clears
+  // whichever else was set, refreshing its button back to its default label.
+  function clearOtherFilters(exceptType) {
+    Object.keys(activeFilters).forEach(function (type) {
+      if (type !== exceptType && activeFilters[type]) {
+        activeFilters[type] = null;
+        activeFilterCounts[type] = null;
+
+        updateButtonLabel(type);
+      }
+    });
+  }
+
+  function setFilter(type, value, count) {
     if (activeFilters[type] === value) {
       activeFilters[type] = null;
+      activeFilterCounts[type] = null;
     } else {
+      clearOtherFilters(type);
+
       activeFilters[type] = value;
+      activeFilterCounts[type] = typeof count === "number" ? count : null;
     }
 
     updateButtonLabel(type);
@@ -394,6 +431,7 @@
 
   function clearFilter(type) {
     activeFilters[type] = null;
+    activeFilterCounts[type] = null;
 
     updateButtonLabel(type);
     applyFiltersAfterLoading();
@@ -463,10 +501,20 @@
     if (active) {
       var short = active.length > 16 ? active.substring(0, 14) + "…" : active;
 
+      var count = activeFilterCounts[type];
+
+      var countHtml =
+        typeof count === "number"
+          ? ' <span class="text-ink/40 dark:text-white/40 font-normal">(' +
+            count +
+            ")</span>"
+          : "";
+
       labelEl.innerHTML =
         defaultLabels[type] +
         ' <span class="ml-1.5 px-2 py-0.5 rounded-[6px] bg-black/5 dark:bg-white/10 text-[13px] text-ink dark:text-white font-medium">' +
         esc(short) +
+        countHtml +
         "</span>";
 
       btn.classList.add("text-ink", "dark:text-white");
@@ -540,11 +588,35 @@
       e.stopPropagation();
 
       var name = btn.getAttribute("data-name") || "";
+      var count = Number(btn.getAttribute("data-count")) || 0;
 
-      setFilter(filterType, name);
+      setFilter(filterType, name, count);
 
       menuEl.classList.add("hidden");
     });
+  }
+
+  // A filter restored from the URL on load has no count yet (the menu data
+  // hasn't been fetched at that point) — once a menu finishes loading, look
+  // up its currently active value among the freshly rendered items and fill
+  // the count in.
+  function syncActiveCountFromMenu(menuEl, filterType) {
+    var active = activeFilters[filterType];
+
+    if (!active) return;
+
+    var items = menuEl.querySelectorAll(".oww-filter-item");
+
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].getAttribute("data-name") === active) {
+        activeFilterCounts[filterType] =
+          Number(items[i].getAttribute("data-count")) || 0;
+
+        updateButtonLabel(filterType);
+
+        break;
+      }
+    }
   }
 
   /* ── Setup a menu: fetch → render → wire ─────────────────────────── */
@@ -568,6 +640,8 @@
       })
       .then(function (data) {
         menuEl.innerHTML = renderFn(data[dataKey]);
+
+        syncActiveCountFromMenu(menuEl, filterType);
       })
       .catch(function () {
         menuEl.innerHTML =
@@ -760,6 +834,42 @@
       }
     }
 
+    // Resolve a "country::X" / "state::X" activeFilters.country value to its
+    // matching count in locationData, for the filter-bar pill.
+    function lookupLocationCount(filterVal) {
+      if (!filterVal) return null;
+
+      if (filterVal.indexOf("country::") === 0) {
+        var countryName = filterVal.slice("country::".length);
+
+        for (var i = 0; i < locationData.length; i++) {
+          if (locationData[i].country === countryName) {
+            return locationData[i].totalCount;
+          }
+        }
+
+        return null;
+      }
+
+      if (filterVal.indexOf("state::") === 0) {
+        var stateName = filterVal.slice("state::".length);
+
+        for (var j = 0; j < locationData.length; j++) {
+          var states = locationData[j].states;
+
+          for (var k = 0; k < states.length; k++) {
+            if (states[k].name === stateName) {
+              return states[k].count;
+            }
+          }
+        }
+
+        return null;
+      }
+
+      return null;
+    }
+
     fetch("/api/countries")
       .then(function (r) {
         return r.json();
@@ -776,6 +886,16 @@
             states: c.states,
           };
         });
+
+        // A country/state filter restored from the URL on load has no count
+        // yet — now that locationData is here, look it up.
+        if (activeFilters.country) {
+          activeFilterCounts.country = lookupLocationCount(
+            activeFilters.country,
+          );
+
+          updateButtonLabel("country");
+        }
 
         menuEl.innerHTML =
           '<div class="flex items-center justify-between px-3 pt-2 pb-1">' +
@@ -812,6 +932,7 @@
             e.stopPropagation();
 
             activeFilters.country = null;
+            activeFilterCounts.country = null;
 
             updateButtonLabel("country");
 
@@ -869,6 +990,12 @@
             activeFilters.country = newFilter;
           }
 
+          if (newFilter) {
+            clearOtherFilters("country");
+          }
+
+          activeFilterCounts.country = lookupLocationCount(newFilter);
+
           updateButtonLabel("country");
 
           applyFiltersAfterLoading();
@@ -891,6 +1018,7 @@
 
       if (activeFilters.country) {
         activeFilters.country = null;
+        activeFilterCounts.country = null;
 
         updateButtonLabel("country");
 
@@ -960,6 +1088,7 @@
     resetFiltersBtn.addEventListener("click", function () {
       Object.keys(activeFilters).forEach(function (type) {
         activeFilters[type] = null;
+        activeFilterCounts[type] = null;
         updateButtonLabel(type);
       });
 
