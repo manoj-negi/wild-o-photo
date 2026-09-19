@@ -3,6 +3,43 @@
   var root = document.documentElement;
   var KEY = "oww:theme";
 
+  /* ── Flow / Grid scroll position memory ───────────────────────────── */
+
+  var FLOW_SCROLL_KEY = "oww:flow-scroll";
+  var GRID_SCROLL_KEY = "oww:grid-scroll";
+
+  if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
+  }
+
+  function saveFlowScrollPosition() {
+    sessionStorage.setItem(FLOW_SCROLL_KEY, String(window.scrollY));
+  }
+
+  function getFlowScrollPosition() {
+    var value = sessionStorage.getItem(FLOW_SCROLL_KEY);
+
+    if (value === null) {
+      return 0;
+    }
+
+    return parseInt(value, 10) || 0;
+  }
+
+  function saveGridScrollPosition(strip) {
+    sessionStorage.setItem(GRID_SCROLL_KEY, String(strip.scrollLeft));
+  }
+
+  function getGridScrollPosition() {
+    var value = sessionStorage.getItem(GRID_SCROLL_KEY);
+
+    if (value === null) {
+      return null;
+    }
+
+    return parseInt(value, 10) || 0;
+  }
+
   if (localStorage.getItem(KEY) === "dark") root.classList.add("dark");
 
   // Desktop header and the mobile nav panel each have their own copy of this
@@ -236,6 +273,18 @@
     year: null,
   };
 
+  var resetFiltersBtn = document.getElementById("resetFiltersBtn");
+
+  function updateResetButton() {
+    var hasActive = Object.keys(activeFilters).some(function (type) {
+      return !!activeFilters[type];
+    });
+
+    if (resetFiltersBtn) {
+      resetFiltersBtn.classList.toggle("hidden", !hasActive);
+    }
+  }
+
   // How many photos match the currently active value for each filter type —
   // shown alongside the value in the filter bar's pill. Populated whenever a
   // value is picked from a dropdown (each menu item already carries its own
@@ -425,6 +474,7 @@
     }
 
     updateButtonLabel(type);
+    updateResetButton();
     applyFiltersAfterLoading();
     updateURLQuery();
   }
@@ -434,6 +484,7 @@
     activeFilterCounts[type] = null;
 
     updateButtonLabel(type);
+    updateResetButton();
     applyFiltersAfterLoading();
     updateURLQuery();
   }
@@ -505,9 +556,9 @@
 
       var countHtml =
         typeof count === "number"
-          ? ' <span class="text-ink/40 dark:text-white/40 font-normal">(' +
+          ? ' <span class="text-ink/40 dark:text-white/40 font-normal">[' +
             count +
-            ")</span>"
+            "]</span>"
           : "";
 
       labelEl.innerHTML =
@@ -930,11 +981,11 @@
         if (clearBtn) {
           clearBtn.addEventListener("click", function (e) {
             e.stopPropagation();
-
             activeFilters.country = null;
             activeFilterCounts.country = null;
 
             updateButtonLabel("country");
+            updateResetButton();
 
             applyFiltersAfterLoading();
             updateURLQuery();
@@ -997,6 +1048,7 @@
           activeFilterCounts.country = lookupLocationCount(newFilter);
 
           updateButtonLabel("country");
+          updateResetButton();
 
           applyFiltersAfterLoading();
           updateURLQuery();
@@ -1021,6 +1073,7 @@
         activeFilterCounts.country = null;
 
         updateButtonLabel("country");
+        updateResetButton();
 
         applyFiltersAfterLoading();
 
@@ -1082,7 +1135,7 @@
 
   /* ── Reset filters ───────────────────────────────────────────────── */
 
-  var resetFiltersBtn = document.getElementById("resetFiltersBtn");
+  /* ── Reset filters ───────────────────────────────────────────────── */
 
   if (resetFiltersBtn) {
     resetFiltersBtn.addEventListener("click", function () {
@@ -1092,6 +1145,7 @@
         updateButtonLabel(type);
       });
 
+      updateResetButton();
       applyFiltersAfterLoading();
       updateURLQuery();
     });
@@ -1779,10 +1833,10 @@
         "</span>" +
         "</span>" +
         // Hover frame (Corners)
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[9px] -translate-y-[9px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[9px] -translate-y-[9px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[9px] translate-y-[9px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[9px] -translate-y-[9px] border-t-2 border-l-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[9px] -translate-y-[9px] border-t-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[9px] translate-y-[9px] border-b-2 border-l-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         // Caption
         '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full -mt-0.5 whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
@@ -1795,10 +1849,19 @@
       copyWidth = strip.scrollWidth / copies.length;
     }
 
-    function goToStart() {
+    function restoreGridScrollPosition() {
       measure();
 
-      if (copyWidth > 0) {
+      if (copyWidth <= 0) {
+        return;
+      }
+
+      var savedPosition = getGridScrollPosition();
+
+      if (savedPosition !== null) {
+        strip.scrollLeft = savedPosition;
+      } else {
+        // First visit to Grid — keep the existing starting position.
         strip.scrollLeft = copyWidth;
       }
     }
@@ -1849,6 +1912,8 @@
     gridLoadAll = loadAllRemaining;
 
     strip.addEventListener("scroll", function () {
+      saveGridScrollPosition(strip);
+
       measure();
 
       if (copyWidth <= 0) {
@@ -1872,12 +1937,12 @@
       }
     });
 
-    window.addEventListener("load", goToStart);
+    window.addEventListener("load", restoreGridScrollPosition);
 
     window.addEventListener("resize", measure);
 
     requestAnimationFrame(function () {
-      setTimeout(goToStart, 60);
+      setTimeout(restoreGridScrollPosition, 60);
     });
   })();
 
@@ -1890,6 +1955,24 @@
 
     if (!canvas || !sentinel) {
       return;
+    }
+
+    /* ── Remember Flow's vertical scroll position ─────────────────── */
+
+    window.addEventListener(
+      "scroll",
+      function () {
+        saveFlowScrollPosition();
+      },
+      {
+        passive: true,
+      },
+    );
+
+    function restoreFlowScrollPosition() {
+      var savedPosition = getFlowScrollPosition();
+
+      window.scrollTo(0, savedPosition);
     }
 
     /*
@@ -1944,10 +2027,10 @@
         "</span>" +
         "</span>" +
         // Hover frame
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[9px] -translate-y-[9px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[9px] -translate-y-[9px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[9px] translate-y-[9px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[9px] -translate-y-[9px] border-t-2 border-l-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[9px] -translate-y-[9px] border-t-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[9px] translate-y-[9px] border-b-2 border-l-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         "</div>" +
         // Caption
         '<span class="pointer-events-none block h-[2px] -mt-0.5 text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
@@ -2039,6 +2122,12 @@
     if (hasMore) {
       observer.observe(sentinel);
     }
+
+    window.addEventListener("load", restoreFlowScrollPosition);
+
+    requestAnimationFrame(function () {
+      setTimeout(restoreFlowScrollPosition, 60);
+    });
   })();
 
   /* ── Photo detail — Back to previous page ─────────────────────────── */
