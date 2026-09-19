@@ -38,7 +38,7 @@ interface DBPhotoRow extends RowDataPacket {
 const slugify = (s: string): string =>
   String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
-const MAX_HOVER_CAPTION_LENGTH = 50;
+const MAX_HOVER_CAPTION_LENGTH = 25;
 
 const asArray = (v: unknown): string[] =>
   v === undefined ? [] : Array.isArray(v) ? (v as string[]) : [v as string];
