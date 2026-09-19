@@ -1782,10 +1782,10 @@
         "</span>" +
         "</span>" +
         // Hover frame (Corners)
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[14px] -translate-y-[14px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[14px] -translate-y-[14px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[14px] translate-y-[38px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[14px] translate-y-[38px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[4px] -translate-y-[4px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[4px] -translate-y-[4px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[4px] translate-y-[4px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[4px] translate-y-[4px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         // Caption
         '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-[12px] whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
@@ -1947,10 +1947,10 @@
         "</span>" +
         "</span>" +
         // Hover frame (Corners)
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[14px] -translate-y-[14px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[14px] -translate-y-[14px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[14px] translate-y-[38px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
-        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[14px] translate-y-[38px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 left-0 w-[44px] h-[48px] -translate-x-[4px] -translate-y-[4px] border-t-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute top-0 right-0 w-[44px] h-[48px] translate-x-[4px] -translate-y-[4px] border-t-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[4px] translate-y-[4px] border-b-2 border-l-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
+        '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[4px] translate-y-[4px] border-b-2 border-r-2 border-[#c8a03c] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         // Caption
         '<span class="pointer-events-none block h-[0px] mt-[12px] text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
@@ -2018,6 +2018,15 @@
 
     flowLoadAll = loadAllRemaining;
 
+    // A large rootMargin here fires loadNextPage() almost immediately on
+    // page load (the sentinel is "nearly visible" before the visitor has
+    // scrolled at all), stacking a second batch of photos into the masonry
+    // grid within a second or two. Since none of these images reserve their
+    // own width/height, each one popping in — and the resulting column
+    // rebalance from the new batch — can shift an existing photo out from
+    // under the visitor's cursor mid-hover. Keeping this small means the
+    // next page only loads once the visitor has actually scrolled close to
+    // the bottom, well after the visible photos have settled.
     var observer = new IntersectionObserver(
       function (entries) {
         if (entries[0].isIntersecting) {
@@ -2025,7 +2034,7 @@
         }
       },
       {
-        rootMargin: "800px 0px",
+        rootMargin: "150px 0px",
       },
     );
 
