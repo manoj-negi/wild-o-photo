@@ -357,6 +357,7 @@
    */
   var flowLoadAll = null;
   var gridLoadAll = null;
+  // var flowRelayout = null;
 
   function applyFiltersAfterLoading() {
     var hasActive = Object.keys(activeFilters).some(function (k) {
@@ -447,6 +448,9 @@
 
       el.style.display = visible ? "" : "none";
     });
+    // if (flowRelayout) {
+    //   flowRelayout();
+    // }
   }
 
   // Only one filter can be active at a time — picking a new one clears
@@ -1770,6 +1774,57 @@
     );
   }
 
+  /* ── Photo cursor — Flow, Grid and Detail ───────────────────── */
+
+  document.addEventListener("mousemove", function (e) {
+    var photo = e.target.closest(".photo-item");
+
+    if (!photo) {
+      return;
+    }
+
+    var plus = photo.querySelector(".photo-plus-cursor");
+
+    if (!plus) {
+      return;
+    }
+
+    var rect = photo.getBoundingClientRect();
+
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+
+    plus.style.left = x + "px";
+    plus.style.top = y + "px";
+
+    photo.classList.add("cursor-none");
+    plus.style.opacity = "1";
+  });
+
+  document.addEventListener("mouseout", function (e) {
+    var photo = e.target.closest(".photo-item");
+
+    if (!photo) {
+      return;
+    }
+
+    /*
+     * Moving between children of the same photo
+     * should not hide the cursor circle.
+     */
+    if (e.relatedTarget && photo.contains(e.relatedTarget)) {
+      return;
+    }
+
+    var plus = photo.querySelector(".photo-plus-cursor");
+
+    photo.classList.remove("cursor-none");
+
+    if (plus) {
+      plus.style.opacity = "0";
+    }
+  });
+
   /* ── Grid view — infinite horizontal scroll + pagination ─────────── */
 
   (function () {
@@ -1826,8 +1881,8 @@
         '" alt="' +
         escAttr(p.alt) +
         '" class="h-full w-auto object-cover select-none">' +
-        // Center plus icon
-        '<span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        // Cursor-following plus icon
+        '<span aria-hidden="true" class="photo-plus-cursor pointer-events-none absolute z-20 opacity-0 -translate-x-1/2 -translate-y-1/2">' +
         '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
         '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
         "</span>" +
@@ -1946,6 +2001,8 @@
     });
   })();
 
+  //
+
   /* ── Flow view — CSS Columns masonry + infinite scroll ───────────── */
 
   (function () {
@@ -2018,8 +2075,8 @@
         '" alt="' +
         escAttr(p.alt) +
         '" class="block w-full h-auto select-none">' +
-        // Center plus icon
-        '<span aria-hidden="true" class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        // Cursor-following plus icon
+        '<span aria-hidden="true" class="photo-plus-cursor pointer-events-none absolute z-20 opacity-0 -translate-x-1/2 -translate-y-1/2">' +
         '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
         '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">' +
         '<path d="M12 5v14M5 12h14"></path>' +

@@ -7,18 +7,23 @@
 
 <main class="pt-[74px] pb-24">
 
-  <div
-    id="flowCanvas"
-    class="columns-2 md:columns-4 gap-4 md:gap-6 px-4 md:px-9 pt-6 pb-18 overflow-visible"
-    data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
-    data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
-    data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>"
-  >
+<div id="flowCanvas" class="columns-2 md:columns-4 gap-4 md:gap-6 px-4 md:px-9 pt-6 pb-18 overflow-visible" data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>" data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>" data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>" >
+
+  <!-- <div
+  id="flowCanvas"
+  class="relative w-full px-2 md:px-3 pt-4 overflow-visible"
+  data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>"
+  data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>"
+  data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>"
+> -->
 
     <% photos.forEach(function (p, i) { %>
 <a
   href="/photo/<%= p.slug %>"
+  
   class="photo-item group block break-inside-avoid overflow-visible mb-4 md:mb-6 hover:z-10 focus-visible:z-10"
+  
+
   data-index="<%= i %>"
   data-category="<%= p.category %>"
   data-collection="<%= p.collection %>"
@@ -39,27 +44,27 @@
       class="block w-full h-auto select-none"
     >
 
-    <!-- Center plus icon -->
+    <!-- Cursor-following plus icon -->
 
-    <span
-      aria-hidden="true"
-      class="pointer-events-none absolute inset-0 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+<span
+  aria-hidden="true"
+  class="photo-plus-cursor pointer-events-none absolute z-20 opacity-0 -translate-x-1/2 -translate-y-1/2"
+>
+  <span
+    class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]"
+  >
+    <svg
+      class="w-[26px] h-[26px] text-white"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.4"
+      stroke-linecap="round"
     >
-      <span
-        class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]"
-      >
-        <svg
-          class="w-[26px] h-[26px] text-white"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.4"
-          stroke-linecap="round"
-        >
-          <path d="M12 5v14M5 12h14"></path>
-        </svg>
-      </span>
-    </span>
+      <path d="M12 5v14M5 12h14"></path>
+    </svg>
+  </span>
+</span>
 
     <!-- Hover frame -->
 
@@ -87,11 +92,17 @@
 
   <!-- Caption -->
 
-  <span
-    class="pointer-events-none block h-[2px] -mt-0.5 text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-  >
-    <%= p.cap %>
-  </span>
+<span
+  class="pointer-events-none block h-[2px] -mt-0.5 text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+>
+  <%= p.cap %>
+</span>
+
+ <!-- <span
+  class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1 whitespace-nowrap text-center text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+>
+  <%= p.cap %>
+</span>  -->
 
 </a>
 
