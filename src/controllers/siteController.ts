@@ -201,8 +201,13 @@ const GRID_PAGE_SIZE = 30;
 
 // ── Rendered page handlers ───────────────────────────────────────────────────
 
-/** GET / — flow view */
-const getFlow = async (req: Request, res: Response) => {
+// Flow and Grid are two tabs of the same gallery page (views/site/index.ejs
+// renders both and toggles between them client-side, entirely in the
+// browser), so a single query serves both.
+const GALLERY_PAGE_SIZE = FLOW_PAGE_SIZE;
+
+/** GET / — gallery page (Flow and Grid tabs) */
+const getGallery = async (req: Request, res: Response) => {
   try {
     const [[{ total }]] = await pool.query<any[]>(
       "SELECT COUNT(*) AS total FROM photos p WHERE p.live = 1"
@@ -212,7 +217,7 @@ const getFlow = async (req: Request, res: Response) => {
        WHERE p.live = 1
        ORDER BY p.id DESC
        LIMIT ?`,
-      [FLOW_PAGE_SIZE]
+      [GALLERY_PAGE_SIZE]
     );
     const [camRows] = await pool.query<DBCameraRow[]>(
       "SELECT id, brand, model FROM cameras ORDER BY id ASC"
@@ -235,52 +240,10 @@ const getFlow = async (req: Request, res: Response) => {
       cameras,
       hasMore,
       nextOffset: photos.length,
-      pageSize: FLOW_PAGE_SIZE,
+      pageSize: GALLERY_PAGE_SIZE,
     });
   } catch (err) {
-    console.error("Error rendering flow page:", err);
-    res.status(500).send("Error loading page");
-  }
-};
-
-/** GET /grid — grid view */
-const getGrid = async (req: Request, res: Response) => {
-  try {
-    const [[{ total }]] = await pool.query<any[]>(
-      "SELECT COUNT(*) AS total FROM photos p WHERE p.live = 1"
-    );
-    const [photoRows] = await pool.query<any[]>(
-      `${SELECT_SITE_PHOTOS}
-       WHERE p.live = 1
-       ORDER BY p.id DESC
-       LIMIT ?`,
-      [GRID_PAGE_SIZE]
-    );
-    const [camRows] = await pool.query<DBCameraRow[]>(
-      "SELECT id, brand, model FROM cameras ORDER BY id ASC"
-    );
-
-    const photos = photoRows.map(r => {
-      const p = mapToSitePhoto(r, {});
-      p.category = r.cat_name || p.category;
-      p.collection = r.col_name || p.collection;
-      p.aboutCollection = r.col_desc || p.aboutCollection;
-      return p;
-    });
-
-    const cameras = buildCameraMenu(camRows, photoRows);
-    const hasMore = photos.length < total;
-
-    res.render("grid", {
-      title: "Of Wild & Walls",
-      photos,
-      cameras,
-      hasMore,
-      nextOffset: photos.length,
-      pageSize: GRID_PAGE_SIZE,
-    });
-  } catch (err) {
-    console.error("Error rendering grid page:", err);
+    console.error("Error rendering gallery page:", err);
     res.status(500).send("Error loading page");
   }
 };
@@ -740,8 +703,7 @@ const getCollectionsAPI = async (req: Request, res: Response) => {
 
 export default {
   // rendered pages
-  getFlow,
-  getGrid,
+  getGallery,
   getPhotoDetail,
   // JSON APIs
   getFlowAPI,

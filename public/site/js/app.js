@@ -3,6 +3,18 @@
   var root = document.documentElement;
   var KEY = "oww:theme";
 
+  function updateThemeIcons() {
+    var isDark = document.documentElement.classList.contains("dark");
+
+    document.querySelectorAll(".theme-icon-moon").forEach(function (icon) {
+      icon.classList.toggle("hidden", isDark);
+    });
+
+    document.querySelectorAll(".theme-icon-sun").forEach(function (icon) {
+      icon.classList.toggle("hidden", !isDark);
+    });
+  }
+
   /* ── Flow / Grid scroll position memory ───────────────────────────── */
 
   var FLOW_SCROLL_KEY = "oww:flow-scroll";
@@ -44,6 +56,19 @@
 
   // Desktop header and the mobile nav panel each have their own copy of this
   // button (same markup, different layout context) — wire both to the same toggle.
+
+  function updateThemeIcons() {
+    var isDark = root.classList.contains("dark");
+
+    document.querySelectorAll(".theme-icon-moon").forEach(function (icon) {
+      icon.classList.toggle("hidden", isDark);
+    });
+
+    document.querySelectorAll(".theme-icon-sun").forEach(function (icon) {
+      icon.classList.toggle("hidden", !isDark);
+    });
+  }
+
   document.querySelectorAll(".js-theme-toggle").forEach(function (btn) {
     btn.addEventListener("click", function () {
       root.classList.toggle("dark");
@@ -51,8 +76,11 @@
         KEY,
         root.classList.contains("dark") ? "dark" : "light",
       );
+      updateThemeIcons();
     });
   });
+
+  updateThemeIcons();
 
   /* ── Mobile / tablet header hamburger ────────────────────────────── */
   (function () {
@@ -103,6 +131,77 @@
         setOpen(false);
       });
     }
+  })();
+
+  /* ── Flow / Grid tabs — switch in place, one page, one URL ────────── */
+  (function () {
+    var flowSection = document.getElementById("flowView");
+    var gridSection = document.getElementById("gridView");
+    var navButtons = document.querySelectorAll("[data-nav-view]");
+
+    if (!flowSection || !gridSection || navButtons.length === 0) return;
+
+    function setNavActive(view) {
+      navButtons.forEach(function (btn) {
+        var isActive = btn.getAttribute("data-nav-view") === view;
+
+        if (btn.classList.contains("nav-link-mobile")) {
+          btn.classList.toggle("font-medium", isActive);
+          btn.classList.toggle("text-ink", isActive);
+          btn.classList.toggle("dark:text-white", isActive);
+          btn.classList.toggle("text-ink/55", !isActive);
+          btn.classList.toggle("dark:text-white/55", !isActive);
+        } else {
+          btn.classList.toggle("text-[15px]", true);
+          btn.classList.toggle("font-medium", isActive);
+          btn.classList.toggle("text-ink/40", !isActive);
+          btn.classList.toggle("dark:text-white/40", !isActive);
+          btn.classList.toggle("hover:text-ink/70", !isActive);
+          btn.classList.toggle("dark:hover:text-white/70", !isActive);
+          btn.classList.toggle("transition-colors", !isActive);
+        }
+      });
+    }
+
+    function currentView() {
+      return gridSection.classList.contains("hidden") ? "flow" : "grid";
+    }
+
+    function switchView(view) {
+      if (view === currentView()) return;
+
+      if (view === "grid") {
+        flowSection.classList.add("hidden");
+        gridSection.classList.remove("hidden");
+
+        if (restoreGridScroll) restoreGridScroll();
+      } else {
+        gridSection.classList.add("hidden");
+        flowSection.classList.remove("hidden");
+
+        if (restoreFlowScroll) restoreFlowScroll();
+      }
+
+      setNavActive(view);
+    }
+
+    navButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        switchView(btn.getAttribute("data-nav-view"));
+
+        // The mobile nav panel stops click bubbling (see above), so closing
+        // it on a tab click has to happen explicitly here too.
+        var navPanel = document.getElementById("navPanel");
+
+        if (navPanel && !navPanel.classList.contains("hidden")) {
+          navPanel.classList.add("hidden");
+
+          var navToggle = document.getElementById("navToggle");
+
+          if (navToggle) navToggle.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
   })();
 
   /* ── Mobile / tablet filter bar ───────────────────────────────────── */
@@ -359,6 +458,11 @@
   var gridLoadAll = null;
   // var flowRelayout = null;
 
+  // Set once each view's own IIFE runs, so the Flow/Grid tab switcher below
+  // can re-run the same scroll restore it does on a full page load.
+  var restoreFlowScroll = null;
+  var restoreGridScroll = null;
+
   function applyFiltersAfterLoading() {
     var hasActive = Object.keys(activeFilters).some(function (k) {
       return !!activeFilters[k];
@@ -400,6 +504,12 @@
     var photos = document.querySelectorAll(".photo-item");
 
     photos.forEach(function (el) {
+      // The detail page's main photo also uses .photo-item for styling,
+      // but it is not part of the filterable Flow/Grid gallery.
+      if (el.querySelector("#mainPhoto")) {
+        return;
+      }
+
       var visible = true;
 
       Object.keys(activeFilters).forEach(function (type) {
@@ -467,15 +577,10 @@
   }
 
   function setFilter(type, value, count) {
-    if (activeFilters[type] === value) {
-      activeFilters[type] = null;
-      activeFilterCounts[type] = null;
-    } else {
-      clearOtherFilters(type);
+    clearOtherFilters(type);
 
-      activeFilters[type] = value;
-      activeFilterCounts[type] = typeof count === "number" ? count : null;
-    }
+    activeFilters[type] = value;
+    activeFilterCounts[type] = typeof count === "number" ? count : null;
 
     updateButtonLabel(type);
     updateResetButton();
@@ -593,16 +698,6 @@
 
     triggerBtn.addEventListener("click", function (e) {
       e.stopPropagation();
-
-      if (activeFilters[filterType]) {
-        clearFilter(filterType);
-
-        document.querySelectorAll(".oww-dropdown").forEach(function (d) {
-          d.classList.add("hidden");
-        });
-
-        return;
-      }
 
       var isHidden = menuEl.classList.contains("hidden");
 
@@ -1030,23 +1125,17 @@
           if (kind === "country") {
             expandedSet[val] = !expandedSet[val];
 
-            var newFilter =
-              activeFilters.country === "country::" + val
-                ? null
-                : "country::" + val;
+            var newFilter = "country::" + val;
+
+            clearOtherFilters("country");
 
             activeFilters.country = newFilter;
           } else {
-            var newFilter =
-              activeFilters.country === "state::" + val
-                ? null
-                : "state::" + val;
+            var newFilter = "state::" + val;
+
+            clearOtherFilters("country");
 
             activeFilters.country = newFilter;
-          }
-
-          if (newFilter) {
-            clearOtherFilters("country");
           }
 
           activeFilterCounts.country = lookupLocationCount(newFilter);
@@ -1068,25 +1157,8 @@
         menuEl.innerHTML =
           '<p class="px-4 py-2 text-[13px] text-red-400 italic">Failed to load</p>';
       });
-
     btnEl.addEventListener("click", function (e) {
       e.stopPropagation();
-
-      if (activeFilters.country) {
-        activeFilters.country = null;
-        activeFilterCounts.country = null;
-
-        updateButtonLabel("country");
-        updateResetButton();
-
-        applyFiltersAfterLoading();
-
-        document.querySelectorAll(".oww-dropdown").forEach(function (d) {
-          d.classList.add("hidden");
-        });
-
-        return;
-      }
 
       var isHidden = menuEl.classList.contains("hidden");
 
@@ -1965,6 +2037,7 @@
     }
 
     gridLoadAll = loadAllRemaining;
+    restoreGridScroll = restoreGridScrollPosition;
 
     strip.addEventListener("scroll", function () {
       saveGridScrollPosition(strip);
@@ -2155,6 +2228,7 @@
     }
 
     flowLoadAll = loadAllRemaining;
+    restoreFlowScroll = restoreFlowScrollPosition;
 
     // A large rootMargin here fires loadNextPage() almost immediately on
     // page load (the sentinel is "nearly visible" before the visitor has
