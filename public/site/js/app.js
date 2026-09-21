@@ -3,6 +3,18 @@
   var root = document.documentElement;
   var KEY = "oww:theme";
 
+  function updateThemeIcons() {
+    var isDark = document.documentElement.classList.contains("dark");
+
+    document.querySelectorAll(".theme-icon-moon").forEach(function (icon) {
+      icon.classList.toggle("hidden", isDark);
+    });
+
+    document.querySelectorAll(".theme-icon-sun").forEach(function (icon) {
+      icon.classList.toggle("hidden", !isDark);
+    });
+  }
+
   /* ── Flow / Grid scroll position memory ───────────────────────────── */
 
   var FLOW_SCROLL_KEY = "oww:flow-scroll";
@@ -44,6 +56,19 @@
 
   // Desktop header and the mobile nav panel each have their own copy of this
   // button (same markup, different layout context) — wire both to the same toggle.
+
+  function updateThemeIcons() {
+    var isDark = root.classList.contains("dark");
+
+    document.querySelectorAll(".theme-icon-moon").forEach(function (icon) {
+      icon.classList.toggle("hidden", isDark);
+    });
+
+    document.querySelectorAll(".theme-icon-sun").forEach(function (icon) {
+      icon.classList.toggle("hidden", !isDark);
+    });
+  }
+
   document.querySelectorAll(".js-theme-toggle").forEach(function (btn) {
     btn.addEventListener("click", function () {
       root.classList.toggle("dark");
@@ -51,8 +76,11 @@
         KEY,
         root.classList.contains("dark") ? "dark" : "light",
       );
+      updateThemeIcons();
     });
   });
+
+  updateThemeIcons();
 
   /* ── Mobile / tablet header hamburger ────────────────────────────── */
   (function () {
@@ -400,6 +428,12 @@
     var photos = document.querySelectorAll(".photo-item");
 
     photos.forEach(function (el) {
+      // The detail page's main photo also uses .photo-item for styling,
+      // but it is not part of the filterable Flow/Grid gallery.
+      if (el.querySelector("#mainPhoto")) {
+        return;
+      }
+
       var visible = true;
 
       Object.keys(activeFilters).forEach(function (type) {
@@ -467,15 +501,10 @@
   }
 
   function setFilter(type, value, count) {
-    if (activeFilters[type] === value) {
-      activeFilters[type] = null;
-      activeFilterCounts[type] = null;
-    } else {
-      clearOtherFilters(type);
+    clearOtherFilters(type);
 
-      activeFilters[type] = value;
-      activeFilterCounts[type] = typeof count === "number" ? count : null;
-    }
+    activeFilters[type] = value;
+    activeFilterCounts[type] = typeof count === "number" ? count : null;
 
     updateButtonLabel(type);
     updateResetButton();
@@ -593,16 +622,6 @@
 
     triggerBtn.addEventListener("click", function (e) {
       e.stopPropagation();
-
-      if (activeFilters[filterType]) {
-        clearFilter(filterType);
-
-        document.querySelectorAll(".oww-dropdown").forEach(function (d) {
-          d.classList.add("hidden");
-        });
-
-        return;
-      }
 
       var isHidden = menuEl.classList.contains("hidden");
 
@@ -1030,23 +1049,17 @@
           if (kind === "country") {
             expandedSet[val] = !expandedSet[val];
 
-            var newFilter =
-              activeFilters.country === "country::" + val
-                ? null
-                : "country::" + val;
+            var newFilter = "country::" + val;
+
+            clearOtherFilters("country");
 
             activeFilters.country = newFilter;
           } else {
-            var newFilter =
-              activeFilters.country === "state::" + val
-                ? null
-                : "state::" + val;
+            var newFilter = "state::" + val;
+
+            clearOtherFilters("country");
 
             activeFilters.country = newFilter;
-          }
-
-          if (newFilter) {
-            clearOtherFilters("country");
           }
 
           activeFilterCounts.country = lookupLocationCount(newFilter);
@@ -1068,25 +1081,8 @@
         menuEl.innerHTML =
           '<p class="px-4 py-2 text-[13px] text-red-400 italic">Failed to load</p>';
       });
-
     btnEl.addEventListener("click", function (e) {
       e.stopPropagation();
-
-      if (activeFilters.country) {
-        activeFilters.country = null;
-        activeFilterCounts.country = null;
-
-        updateButtonLabel("country");
-        updateResetButton();
-
-        applyFiltersAfterLoading();
-
-        document.querySelectorAll(".oww-dropdown").forEach(function (d) {
-          d.classList.add("hidden");
-        });
-
-        return;
-      }
 
       var isHidden = menuEl.classList.contains("hidden");
 
