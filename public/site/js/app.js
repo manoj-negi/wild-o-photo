@@ -2092,6 +2092,14 @@
     window.addEventListener(
       "scroll",
       function () {
+        // Switching to the Grid tab hides #flowView, which collapses the
+        // document's scrollable height and forces the browser to snap
+        // window.scrollY to 0 — that spurious scroll event must not
+        // overwrite the position we still want to restore on switching back.
+        if (canvas.offsetParent === null) {
+          return;
+        }
+
         saveFlowScrollPosition();
       },
       {
