@@ -16,7 +16,7 @@
                 ? '?' + filterQuery : '' ; photos.forEach(function (p, i) { var lay=railLayout[i % railLayout.length];
                 var dData=p.details || details || {}; %>
                 <a href="/photo/<%= p.slug %><%= qs %>"
-                  class="rail-thumb rail-in group block shrink-0 overflow-hidden transition-all duration-300 relative rounded-sm"
+                  class="rail-thumb rail-in group block shrink-0 overflow-hidden transition-all duration-300 relative "
                   data-src="<%= p.src %>" data-alt="<%= p.alt %>" data-href="/photo/<%= p.slug %><%= qs %>"
                   data-title="<%= dData.title || p.title || '' %>" data-kicker="<%= dData.kicker || 'LANDSCAPE' %>"
                   data-ref="<%= dData.ref || 'REF: WILD-' + (i + 101) %>" data-about="<%= dData.about || '' %>"
@@ -38,15 +38,7 @@
 
       <%# ── Top-right controls ─────────────────────────────────────────── %>
         <div class="fixed top-4 right-4 md:top-6 md:right-8 z-30 flex items-center gap-2.5 sm:gap-3.5 md:gap-5">
-          <button type="button" id="ambientBtn"
-            class="flex items-center gap-2 text-[11px] tracking-[0.14em] uppercase text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
-            <svg class="w-[14px] h-[14px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
-              stroke-linecap="round">
-              <path d="M4 14v4M9 8v10M14 11v7M19 5v13"></path>
-            </svg>
-            <span class="hidden sm:inline whitespace-nowrap font-mono text-[10px]">AMBIENT SOUND</span>
-          </button>
-
+         
           <button type="button" id="themeToggle" aria-label="Dark mode"
             class="js-theme-toggle text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 transition-colors">
             <svg class="w-[16px] h-[16px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
@@ -54,14 +46,6 @@
               <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"></path>
             </svg>
           </button>
-
-          <div
-            class="flex items-center p-0.5 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-            <button type="button" data-take="edited"
-              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] uppercase transition-colors bg-black text-white dark:bg-white dark:text-black font-semibold">EDITED</button>
-            <button type="button" data-take="raw"
-              class="px-3 py-1 rounded-full text-[10px] tracking-[0.1em] uppercase transition-colors text-neutral-400 dark:text-neutral-500 hover:text-neutral-700 dark:hover:text-neutral-300 font-medium">RAW</button>
-          </div>
 
           <button type="button" id="detailToggle" aria-label="Toggle details"
             class="w-8 h-8 rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-800 dark:text-white flex items-center justify-center hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors">
