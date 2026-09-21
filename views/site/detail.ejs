@@ -63,12 +63,48 @@
         <%# ── Main stage — photo fills center, right padding adjusts when drawer opens. Side padding matches the
           thumbnail rail/details panel widths only at md+, where those are actually visible; below that both are
           full-screen overlays instead, so the stage just needs a small side gutter. ── %>
-          <main id="stage"
-            class="h-screen flex flex-col items-center justify-center pt-20 pb-4 px-4 md:pl-[180px] md:pr-[120px] transition-all duration-500 ease-out">
-            <div class="flex-1 flex items-center justify-center w-full min-h-0">
-              <img id="mainPhoto" src="<%= photo.src %>" alt="<%= photo.alt %>"
-                class="fade-up max-h-full w-auto max-w-full object-contain block cursor-zoom-in">
-            </div>
+          <main
+  id="stage"
+  class="h-screen box-border flex flex-col items-center pt-20 pb-2 px-4 md:pl-[180px] md:pr-[120px] transition-all duration-500 ease-out"
+>
+  <div class="flex-1 min-h-0 w-full flex items-center justify-center">
+
+  <div
+  class="photo-item group relative max-w-full max-h-[calc(100vh-140px)]"
+>
+
+    <img
+      id="mainPhoto"
+      src="<%= photo.src %>"
+      alt="<%= photo.alt %>"
+     class="fade-up max-h-[calc(100vh-140px)] max-w-full w-auto h-auto object-contain block cursor-zoom-in"
+    >
+
+    <!-- Cursor-following plus icon -->
+
+    <span
+      aria-hidden="true"
+      class="photo-plus-cursor pointer-events-none absolute z-20 opacity-0 -translate-x-1/2 -translate-y-1/2"
+    >
+      <span
+        class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]"
+      >
+        <svg
+          class="w-[26px] h-[26px] text-white"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+        >
+          <path d="M12 5v14M5 12h14"></path>
+        </svg>
+      </span>
+    </span>
+
+  </div>
+
+</div>
             <a href="/" id="photoBackBtn"
               class="shrink-0 py-3 text-[18px] font-black tracking-[0.04em] uppercase flex items-center justify-center gap-2 hover:opacity-60 transition-opacity">&larr;&nbsp;
               BACK</a>
