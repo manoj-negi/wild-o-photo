@@ -5,8 +5,10 @@ const router = Router();
 
 // ── Rendered pages ────────────────────────────────────────────────────────────
 
-router.get("/", siteController.getFlow);
-router.get("/grid", siteController.getGrid);
+router.get("/", siteController.getGallery);
+// Flow and Grid are tabs on the same page now — old bookmarks/links to
+// /grid still land somewhere sensible instead of 404ing.
+router.get("/grid", (req, res) => res.redirect("/"));
 router.get("/photo/:slug", siteController.getPhotoDetail);
 
 // ── Site JSON APIs ────────────────────────────────────────────────────────────

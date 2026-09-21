@@ -133,6 +133,77 @@
     }
   })();
 
+  /* ── Flow / Grid tabs — switch in place, one page, one URL ────────── */
+  (function () {
+    var flowSection = document.getElementById("flowView");
+    var gridSection = document.getElementById("gridView");
+    var navButtons = document.querySelectorAll("[data-nav-view]");
+
+    if (!flowSection || !gridSection || navButtons.length === 0) return;
+
+    function setNavActive(view) {
+      navButtons.forEach(function (btn) {
+        var isActive = btn.getAttribute("data-nav-view") === view;
+
+        if (btn.classList.contains("nav-link-mobile")) {
+          btn.classList.toggle("font-medium", isActive);
+          btn.classList.toggle("text-ink", isActive);
+          btn.classList.toggle("dark:text-white", isActive);
+          btn.classList.toggle("text-ink/55", !isActive);
+          btn.classList.toggle("dark:text-white/55", !isActive);
+        } else {
+          btn.classList.toggle("text-[15px]", true);
+          btn.classList.toggle("font-medium", isActive);
+          btn.classList.toggle("text-ink/40", !isActive);
+          btn.classList.toggle("dark:text-white/40", !isActive);
+          btn.classList.toggle("hover:text-ink/70", !isActive);
+          btn.classList.toggle("dark:hover:text-white/70", !isActive);
+          btn.classList.toggle("transition-colors", !isActive);
+        }
+      });
+    }
+
+    function currentView() {
+      return gridSection.classList.contains("hidden") ? "flow" : "grid";
+    }
+
+    function switchView(view) {
+      if (view === currentView()) return;
+
+      if (view === "grid") {
+        flowSection.classList.add("hidden");
+        gridSection.classList.remove("hidden");
+
+        if (restoreGridScroll) restoreGridScroll();
+      } else {
+        gridSection.classList.add("hidden");
+        flowSection.classList.remove("hidden");
+
+        if (restoreFlowScroll) restoreFlowScroll();
+      }
+
+      setNavActive(view);
+    }
+
+    navButtons.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        switchView(btn.getAttribute("data-nav-view"));
+
+        // The mobile nav panel stops click bubbling (see above), so closing
+        // it on a tab click has to happen explicitly here too.
+        var navPanel = document.getElementById("navPanel");
+
+        if (navPanel && !navPanel.classList.contains("hidden")) {
+          navPanel.classList.add("hidden");
+
+          var navToggle = document.getElementById("navToggle");
+
+          if (navToggle) navToggle.setAttribute("aria-expanded", "false");
+        }
+      });
+    });
+  })();
+
   /* ── Mobile / tablet filter bar ───────────────────────────────────── */
   (function () {
     var toggle = document.getElementById("filtersToggle");
@@ -386,6 +457,11 @@
   var flowLoadAll = null;
   var gridLoadAll = null;
   // var flowRelayout = null;
+
+  // Set once each view's own IIFE runs, so the Flow/Grid tab switcher below
+  // can re-run the same scroll restore it does on a full page load.
+  var restoreFlowScroll = null;
+  var restoreGridScroll = null;
 
   function applyFiltersAfterLoading() {
     var hasActive = Object.keys(activeFilters).some(function (k) {
@@ -1961,6 +2037,7 @@
     }
 
     gridLoadAll = loadAllRemaining;
+    restoreGridScroll = restoreGridScrollPosition;
 
     strip.addEventListener("scroll", function () {
       saveGridScrollPosition(strip);
@@ -2151,6 +2228,7 @@
     }
 
     flowLoadAll = loadAllRemaining;
+    restoreFlowScroll = restoreFlowScrollPosition;
 
     // A large rootMargin here fires loadNextPage() almost immediately on
     // page load (the sentinel is "nearly visible" before the visitor has
