@@ -1955,8 +1955,69 @@
         '" class="h-full w-auto object-cover select-none">' +
         // Cursor-following plus icon
         '<span aria-hidden="true" class="photo-plus-cursor pointer-events-none absolute z-20 opacity-0 -translate-x-1/2 -translate-y-1/2">' +
-        '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
-        '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>' +
+        '<span class="relative w-[68px] h-[68px] grid place-items-center">' +
+        '<svg class="absolute inset-0 w-full h-full" viewBox="0 0 68 68" fill="none" aria-hidden="true">' +
+        "<defs>" +
+        '<clipPath id="lensClip">' +
+        '<circle cx="34" cy="34" r="32"></circle>' +
+        "</clipPath>" +
+        '<filter id="lensShadow" x="-50%" y="-50%" width="200%" height="200%">' +
+        '<feGaussianBlur stdDeviation="3"></feGaussianBlur>' +
+        "</filter>" +
+        "</defs>" +
+        '<g clip-path="url(#lensClip)">' +
+        "<circle " +
+        'cx="34" cy="34" r="32.5" ' +
+        'fill="rgba(255,255,255,0.055)">' +
+        "</circle>" +
+        "<ellipse " +
+        'cx="27" cy="23" ' +
+        'rx="0" ry="0" ' +
+        'fill="rgba(255,255,255,0.29)" ' +
+        'filter="url(#lensShadow)" ' +
+        'transform="rotate(-35 27 23)">' +
+        "</ellipse>" +
+        "<circle " +
+        'cx="34" cy="34" r="30" ' +
+        'stroke="rgba(255,255,255,0.0)" ' +
+        'stroke-width="5" ' +
+        'filter="url(#lensShadow)">' +
+        "</circle>" +
+        "</g>" +
+        "<path " +
+        'd="M 22 3.5 A 30.5 30.5 0 0 1 46 3.5" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "<path " +
+        'd="M 64.5 22 A 30.5 30.5 0 0 1 64.5 46" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "<path " +
+        'd="M 46 64.5 A 30.5 30.5 0 0 1 22 64.5" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "<path " +
+        'd="M 3.5 46 A 30.5 30.5 0 0 1 3.5 22" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "</svg>" +
+        "<svg " +
+        'class="relative w-[26px] h-[26px] text-white" ' +
+        'viewBox="0 0 24 24" ' +
+        'fill="none" ' +
+        'stroke="currentColor" ' +
+        'stroke-width="1.4" ' +
+        'stroke-linecap="round">' +
+        '<path d="M12 5v14M5 12h14"></path>' +
+        "</svg>" +
         "</span>" +
         "</span>" +
         // Hover frame (Corners)
@@ -2158,8 +2219,67 @@
         '" class="block w-full h-auto select-none">' +
         // Cursor-following plus icon
         '<span aria-hidden="true" class="photo-plus-cursor pointer-events-none absolute z-20 opacity-0 -translate-x-1/2 -translate-y-1/2">' +
-        '<span class="w-[68px] h-[68px] rounded-full border border-white/85 grid place-items-center shadow-[0_0_18px_rgba(0,0,0,0.35)]">' +
-        '<svg class="w-[26px] h-[26px] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">' +
+        '<span class="relative w-[68px] h-[68px] grid place-items-center">' +
+        '<svg class="absolute inset-0 w-full h-full" viewBox="0 0 68 68" fill="none" aria-hidden="true">' +
+        "<defs>" +
+        '<clipPath id="lensClip">' +
+        '<circle cx="34" cy="34" r="32"></circle>' +
+        "</clipPath>" +
+        '<filter id="lensShadow" x="-50%" y="-50%" width="200%" height="200%">' +
+        '<feGaussianBlur stdDeviation="3"></feGaussianBlur>' +
+        "</filter>" +
+        "</defs>" +
+        '<g clip-path="url(#lensClip)">' +
+        "<circle " +
+        'cx="34" cy="34" r="32.5" ' +
+        'fill="rgba(255,255,255,0.055)">' +
+        "</circle>" +
+        "<ellipse " +
+        'cx="27" cy="23" ' +
+        'rx="0" ry="0" ' +
+        'fill="rgba(255,255,255,0.29)" ' +
+        'filter="url(#lensShadow)" ' +
+        'transform="rotate(-35 27 23)">' +
+        "</ellipse>" +
+        "<circle " +
+        'cx="34" cy="34" r="30" ' +
+        'stroke="rgba(255,255,255,0.0)" ' +
+        'stroke-width="5" ' +
+        'filter="url(#lensShadow)">' +
+        "</circle>" +
+        "</g>" +
+        "<path " +
+        'd="M 22 3.5 A 30.5 30.5 0 0 1 46 3.5" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "<path " +
+        'd="M 64.5 22 A 30.5 30.5 0 0 1 64.5 46" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "<path " +
+        'd="M 46 64.5 A 30.5 30.5 0 0 1 22 64.5" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "<path " +
+        'd="M 3.5 46 A 30.5 30.5 0 0 1 3.5 22" ' +
+        'stroke="rgba(255,255,255,0.75)" ' +
+        'stroke-width="1.2" ' +
+        'stroke-linecap="round">' +
+        "</path>" +
+        "</svg>" +
+        "<svg " +
+        'class="relative w-[26px] h-[26px] text-white" ' +
+        'viewBox="0 0 24 24" ' +
+        'fill="none" ' +
+        'stroke="currentColor" ' +
+        'stroke-width="1.4" ' +
+        'stroke-linecap="round">' +
         '<path d="M12 5v14M5 12h14"></path>' +
         "</svg>" +
         "</span>" +
