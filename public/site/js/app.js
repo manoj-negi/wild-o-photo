@@ -489,16 +489,11 @@
   }
 
   /*
-   * CSS Columns masonry does the layout itself.
-   *
-   * We intentionally DO NOT move/re-parent photo elements here.
-   *
-   * With:
-   *
-   *   columns-2 md:columns-4
-   *
-   * the browser automatically repacks visible elements when display:none
-   * is applied to filtered photos.
+   * Flow's own script (below) lays photos out into scattered columns;
+   * Grid uses a simple horizontal strip. Both close ranks on their own
+   * — a column is a flex/grid container, so hiding one of its children
+   * with display:none collapses that slot immediately, no re-layout
+   * needed here.
    */
   function applyFilters() {
     var photos = document.querySelectorAll(".photo-item");
@@ -2076,7 +2071,7 @@
 
   //
 
-  /* ── Flow view — CSS Columns masonry + infinite scroll ───────────── */
+  /* ── Flow view — scattered column layout + infinite scroll ────────── */
 
   (function () {
     var canvas = document.getElementById("flowCanvas");
@@ -2116,13 +2111,195 @@
     /*
      * IMPORTANT:
      *
-     * There are no .flow-column elements anymore.
+     * #flowCanvas holds a row of column <div>s that this script builds
+     * and owns (see buildFlowColumns) — .photo-item elements always end
+     * up inside one of those columns, never as a direct child of
+     * #flowCanvas itself.
      *
-     * #flowCanvas itself is the CSS-columns masonry container.
+     * Each photo's width, its inset from the column edge, and the gap
+     * above it are randomized — but seeded from the photo's own slug
+     * (flowSeed/flowRng), so a given photo always gets the same geometry
+     * no matter when or where it loads: a fresh page load, a later
+     * infinite-scroll page, and a column-count change on resize all
+     * agree. That's what produces the off-grid, scattered feel instead
+     * of a tidy aligned masonry.
      *
-     * New photos are appended directly to #flowCanvas and the browser
-     * automatically places them into the masonry columns.
+     * A photo is only placed into a column once its real <img> has
+     * loaded (placeFlowItem/queueFlowItem below), so column-balancing
+     * always works from the photo's true rendered height, never a guess.
+     * Guessing was tried before (the old per-photo l/t/w/h columns on
+     * `photos`, driven by a fixed-cycle template) and caused a recurring
+     * dead-space gap bug — see
+     * migrations/20260910120000-clear-photo-positions.js. Nothing here
+     * reads or writes that (or any) per-photo position data on the
+     * backend; the whole layout is computed client-side.
      */
+
+    // Seeded PRNG (mulberry32) — deterministic per seed, so the same
+    // photo always gets the same "random" geometry.
+    function flowRng(seed) {
+      var t = seed + 0x6d2b79f5;
+
+      return function () {
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+
+    function flowSeed(slug) {
+      var h = 0;
+
+      for (var i = 0; i < slug.length; i++) {
+        h = (Math.imul(31, h) + slug.charCodeAt(i)) | 0;
+      }
+
+      return h;
+    }
+
+    var FLOW_WIDTH_MIN = 54; // narrowest a tile can be, as % of its column
+    var FLOW_WIDTH_RANGE = 46; // + up to this much more (54%–100%)
+    var FLOW_GAP_MIN = 18; // smallest gap above a tile, in px
+    var FLOW_GAP_RANGE = 150; // + up to this much more
+
+    function flowGeometry(slug) {
+      var r = flowRng(flowSeed(slug || ""));
+      var width = FLOW_WIDTH_MIN + r() * FLOW_WIDTH_RANGE;
+      var left = r() * (100 - width);
+      var gapTop = Math.round(FLOW_GAP_MIN + r() * FLOW_GAP_RANGE);
+
+      return { width: width, left: left, gapTop: gapTop };
+    }
+
+    function flowColCount() {
+      var w = window.innerWidth;
+
+      return w < 560 ? 2 : w < 900 ? 3 : w < 1280 ? 4 : 5;
+    }
+
+    var flowCols = [];
+    var flowColHeights = [];
+
+    function buildFlowColumns() {
+      canvas.className =
+        "px-4 md:px-9 pt-6 pb-18 overflow-visible grid items-start gap-5 md:gap-7";
+
+      var count = flowColCount();
+
+      canvas.style.gridTemplateColumns = "repeat(" + count + ", minmax(0, 1fr))";
+      canvas.innerHTML = "";
+
+      flowCols = [];
+      flowColHeights = [];
+
+      for (var i = 0; i < count; i++) {
+        var col = document.createElement("div");
+
+        col.className = "flex flex-col";
+
+        canvas.appendChild(col);
+        flowCols.push(col);
+        flowColHeights.push(0);
+      }
+    }
+
+    // Places an already-built .photo-item (its <img> must already be
+    // loaded, real or a fallback on error) into whichever column is
+    // currently shortest, applying its seeded width/inset/gap.
+    function placeFlowItem(a, img) {
+      var geo = flowGeometry(a.getAttribute("data-slug"));
+
+      a.style.width = geo.width + "%";
+      a.style.marginLeft = geo.left + "%";
+      a.style.marginTop = geo.gapTop + "px";
+
+      var shortest = 0;
+
+      for (var i = 1; i < flowColHeights.length; i++) {
+        if (flowColHeights[i] < flowColHeights[shortest]) {
+          shortest = i;
+        }
+      }
+
+      flowCols[shortest].appendChild(a);
+
+      // Estimate the tile's rendered height from its real aspect ratio
+      // and chosen width, purely to keep the column-balancing running
+      // total current — the tile's actual on-screen height (already
+      // laid out correctly by the browser via w-full/h-auto) is what
+      // the visitor sees either way.
+      var colWidth = flowCols[shortest].getBoundingClientRect().width || 1;
+      var renderedWidth = (colWidth * geo.width) / 100;
+      var aspect = (img.naturalWidth || 4) / (img.naturalHeight || 5);
+
+      flowColHeights[shortest] += geo.gapTop + renderedWidth / aspect;
+    }
+
+    function queueFlowItem(a) {
+      var img = a.querySelector("img");
+
+      if (!img) {
+        return;
+      }
+
+      if (img.complete && img.naturalWidth) {
+        placeFlowItem(a, img);
+      } else {
+        img.addEventListener("load", function () {
+          placeFlowItem(a, img);
+        });
+        img.addEventListener("error", function () {
+          // A broken image still gets placed (at a modest fallback
+          // aspect ratio) so it doesn't just vanish from the layout.
+          placeFlowItem(a, { naturalWidth: 0, naturalHeight: 0 });
+        });
+      }
+    }
+
+    // Re-lays-out everything currently on the page — used when a resize
+    // crosses a column-count breakpoint. Photos already loaded are
+    // re-placed instantly (no reload, no re-wait); anything still
+    // mid-load re-queues itself as usual once ready.
+    function rebuildFlowLayout() {
+      var items = Array.prototype.slice.call(
+        canvas.querySelectorAll(".photo-item"),
+      );
+
+      buildFlowColumns();
+
+      items.forEach(queueFlowItem);
+    }
+
+    // The server already rendered the first page of photos flat inside
+    // #flowCanvas (see index.ejs) — grab those before buildFlowColumns()
+    // clears the container, then queue each one for real placement.
+    var initialItems = Array.prototype.slice.call(
+      canvas.querySelectorAll(".photo-item"),
+    );
+
+    buildFlowColumns();
+    initialItems.forEach(queueFlowItem);
+
+    var flowResizeTimer = null;
+    var flowCurrentCols = flowColCount();
+
+    window.addEventListener("resize", function () {
+      if (canvas.offsetParent === null) {
+        return;
+      }
+
+      clearTimeout(flowResizeTimer);
+
+      flowResizeTimer = setTimeout(function () {
+        var cols = flowColCount();
+
+        if (cols !== flowCurrentCols) {
+          flowCurrentCols = cols;
+          rebuildFlowLayout();
+        }
+      }, 150);
+    });
 
     var pageSize = parseInt(canvas.getAttribute("data-page-size"), 10) || 30;
 
@@ -2138,9 +2315,10 @@
       a.href = "/photo/" + encodeURIComponent(p.slug);
 
       a.className =
-        "photo-item group block break-inside-avoid overflow-visible mb-4 md:mb-6 hover:z-10 focus-visible:z-10";
+        "photo-item group block overflow-visible hover:z-10 focus-visible:z-10";
 
       a.setAttribute("data-index", nextIndex++);
+      a.setAttribute("data-slug", p.slug || "");
       a.setAttribute("data-category", p.category || "");
       a.setAttribute("data-collection", p.collection || "");
       a.setAttribute("data-camera", p.camera || "");
@@ -2180,12 +2358,12 @@
 
     function appendPhotos(newPhotos) {
       /*
-       * CSS Columns handles the placement.
-       *
-       * We do NOT distribute photos between columns manually.
+       * We do NOT distribute photos between columns manually — each one
+       * is queued (queueFlowItem, above) and placed into whichever
+       * column is shortest once its image has loaded.
        */
       newPhotos.forEach(function (p) {
-        canvas.appendChild(buildPhotoItem(p));
+        queueFlowItem(buildPhotoItem(p));
       });
 
       /*
