@@ -2021,7 +2021,7 @@
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[9px] translate-y-[9px] border-b-2 border-l-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         // Caption
-        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full -mt-0.5 whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full -mt-0.5 whitespace-nowrap font-tight text-[14px] font-medium leading-none tracking-[-0.01em] text-center text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
         "</span>";
 
@@ -2268,12 +2268,10 @@
     // Places an already-built .photo-item (its <img> must already be
     // loaded, real or a fallback on error) into whichever column is
     // currently shortest, applying its seeded width/inset/gap.
+    var FLOW_MIN_TILE_PX = 240; // only enforced where a column is already this wide
+
     function placeFlowItem(a, img) {
       var geo = flowGeometry(a.getAttribute("data-slug"));
-
-      a.style.width = geo.width + "%";
-      a.style.marginLeft = geo.left + "%";
-      a.style.marginTop = geo.gapTop + "px";
 
       var shortest = 0;
 
@@ -2283,6 +2281,25 @@
         }
       }
 
+      var colWidth = flowCols[shortest].getBoundingClientRect().width || 1;
+
+      // On columns wide enough to comfortably fit it, guarantee a
+      // 208px-minimum tile instead of letting the seeded width drift
+      // smaller — narrower columns (mobile) are left alone rather than
+      // forced to overflow their column.
+      if (colWidth >= FLOW_MIN_TILE_PX) {
+        var minWidthPct = (FLOW_MIN_TILE_PX / colWidth) * 100;
+
+        if (geo.width < minWidthPct) {
+          geo.width = minWidthPct;
+          geo.left = Math.min(geo.left, 100 - geo.width);
+        }
+      }
+
+      a.style.width = geo.width + "%";
+      a.style.marginLeft = geo.left + "%";
+      a.style.marginTop = geo.gapTop + "px";
+
       flowCols[shortest].appendChild(a);
 
       // Estimate the tile's rendered height from its real aspect ratio
@@ -2290,7 +2307,6 @@
       // total current — the tile's actual on-screen height (already
       // laid out correctly by the browser via w-full/h-auto) is what
       // the visitor sees either way.
-      var colWidth = flowCols[shortest].getBoundingClientRect().width || 1;
       var renderedWidth = (colWidth * geo.width) / 100;
       var aspect = (img.naturalWidth || 4) / (img.naturalHeight || 5);
 
@@ -2469,7 +2485,7 @@
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         "</div>" +
         // Caption
-        '<span class="pointer-events-none block h-[2px] -mt-0.5 text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        '<span class="pointer-events-none block h-[2px] -mt-0.5 text-center whitespace-nowrap font-tight text-[14px] font-medium leading-none tracking-[-0.01em] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
         "</span>";
 
