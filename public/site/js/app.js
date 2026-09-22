@@ -2269,12 +2269,10 @@
     // Places an already-built .photo-item (its <img> must already be
     // loaded, real or a fallback on error) into whichever column is
     // currently shortest, applying its seeded width/inset/gap.
+    var FLOW_MIN_TILE_PX = 240; // only enforced where a column is already this wide
+
     function placeFlowItem(a, img) {
       var geo = flowGeometry(a.getAttribute("data-slug"));
-
-      a.style.width = geo.width + "%";
-      a.style.marginLeft = geo.left + "%";
-      a.style.marginTop = geo.gapTop + "px";
 
       var shortest = 0;
 
@@ -2284,6 +2282,25 @@
         }
       }
 
+      var colWidth = flowCols[shortest].getBoundingClientRect().width || 1;
+
+      // On columns wide enough to comfortably fit it, guarantee a
+      // 208px-minimum tile instead of letting the seeded width drift
+      // smaller — narrower columns (mobile) are left alone rather than
+      // forced to overflow their column.
+      if (colWidth >= FLOW_MIN_TILE_PX) {
+        var minWidthPct = (FLOW_MIN_TILE_PX / colWidth) * 100;
+
+        if (geo.width < minWidthPct) {
+          geo.width = minWidthPct;
+          geo.left = Math.min(geo.left, 100 - geo.width);
+        }
+      }
+
+      a.style.width = geo.width + "%";
+      a.style.marginLeft = geo.left + "%";
+      a.style.marginTop = geo.gapTop + "px";
+
       flowCols[shortest].appendChild(a);
 
       // Estimate the tile's rendered height from its real aspect ratio
@@ -2291,7 +2308,6 @@
       // total current — the tile's actual on-screen height (already
       // laid out correctly by the browser via w-full/h-auto) is what
       // the visitor sees either way.
-      var colWidth = flowCols[shortest].getBoundingClientRect().width || 1;
       var renderedWidth = (colWidth * geo.width) / 100;
       var aspect = (img.naturalWidth || 4) / (img.naturalHeight || 5);
 
