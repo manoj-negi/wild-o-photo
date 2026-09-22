@@ -38,7 +38,7 @@ interface DBPhotoRow extends RowDataPacket {
 const slugify = (s: string): string =>
   String(s || "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 
-const MAX_HOVER_CAPTION_LENGTH = 22;
+const countWords = (s: string): number => s.trim().split(/\s+/).filter(Boolean).length;
 
 const asArray = (v: unknown): string[] =>
   v === undefined ? [] : Array.isArray(v) ? (v as string[]) : [v as string];
@@ -335,10 +335,10 @@ const createPhoto = async (req: Request, res: Response) => {
 
   const cap = String(req.body.cap || "").trim();
 
-if (cap.length > MAX_HOVER_CAPTION_LENGTH) {
-  return res.status(400).send(
-    `Hover caption must not exceed ${MAX_HOVER_CAPTION_LENGTH} characters.`
-  );
+const capWordCount = countWords(cap);
+
+if (capWordCount < 2 || capWordCount > 3) {
+  return res.status(400).send("Hover caption must be 2 to 3 words.");
 }
 
 const slug = slugify(req.body.slug || cap);
@@ -434,10 +434,10 @@ const updatePhoto = async (req: Request, res: Response) => {
 
   const cap = String(req.body.cap || "").trim();
 
-if (cap.length > MAX_HOVER_CAPTION_LENGTH) {
-  return res.status(400).send(
-    `Hover caption must not exceed ${MAX_HOVER_CAPTION_LENGTH} characters.`
-  );
+const capWordCount = countWords(cap);
+
+if (capWordCount < 2 || capWordCount > 3) {
+  return res.status(400).send("Hover caption must be 2 to 3 words.");
 }
 
 const slug = slugify(req.body.slug || cap) || existing.slug;
