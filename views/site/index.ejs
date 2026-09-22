@@ -15,16 +15,21 @@
   class="pt-[74px] pb-24"
 >
 
-<div id="flowCanvas" class="columns-2 md:columns-4 gap-4 md:gap-6 px-4 md:px-9 pt-6 pb-18 overflow-visible" data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>" data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>" data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>" >
+<div id="flowCanvas" class="px-4 md:px-9 pt-6 pb-18 overflow-visible" data-offset="<%= typeof nextOffset !== 'undefined' ? nextOffset : photos.length %>" data-page-size="<%= typeof pageSize !== 'undefined' ? pageSize : photos.length %>" data-has-more="<%= typeof hasMore !== 'undefined' && hasMore ? '1' : '0' %>" >
+
+    <%# Rendered flat here for the first paint / no-JS fallback — app.js
+        picks these up, builds the scattered column layout, and re-parents
+        each one into it once its image has loaded. %>
 
     <% photos.forEach(function (p, i) { %>
 <a
   href="/photo/<%= p.slug %>"
 
-  class="photo-item group block break-inside-avoid overflow-visible mb-4 md:mb-6 hover:z-10 focus-visible:z-10"
+  class="photo-item group block overflow-visible hover:z-10 focus-visible:z-10"
 
 
   data-index="<%= i %>"
+  data-slug="<%= p.slug %>"
   data-category="<%= p.category %>"
   data-collection="<%= p.collection %>"
   data-camera="<%= p.camera %>"
