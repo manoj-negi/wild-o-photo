@@ -2158,8 +2158,8 @@
       return h;
     }
 
-    var FLOW_WIDTH_MIN = 54; // narrowest a tile can be, as % of its column
-    var FLOW_WIDTH_RANGE = 46; // + up to this much more (54%–100%)
+    var FLOW_WIDTH_MIN = 40; // narrowest a tile can be, as % of its column
+    var FLOW_WIDTH_RANGE = 60; // + up to this much more (40%–100%)
     var FLOW_GAP_MIN = 18; // smallest gap above a tile, in px
     var FLOW_GAP_RANGE = 150; // + up to this much more
 
