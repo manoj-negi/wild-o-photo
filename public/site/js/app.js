@@ -2021,7 +2021,7 @@
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 left-0 w-[44px] h-[48px] -translate-x-[9px] translate-y-[9px] border-b-2 border-l-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         // Caption
-        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full -mt-0.5 whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        '<span class="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full h-[0px] -mt-0.5 whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
         "</span>";
 
@@ -2248,7 +2248,8 @@
 
       var count = flowColCount();
 
-      canvas.style.gridTemplateColumns = "repeat(" + count + ", minmax(0, 1fr))";
+      canvas.style.gridTemplateColumns =
+        "repeat(" + count + ", minmax(0, 1fr))";
       canvas.innerHTML = "";
 
       flowCols = [];
@@ -2469,7 +2470,7 @@
         '<span aria-hidden="true" class="pointer-events-none absolute bottom-0 right-0 w-[44px] h-[48px] translate-x-[9px] translate-y-[9px] border-b-2 border-r-2 border-[#F4B508] opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>' +
         "</div>" +
         // Caption
-        '<span class="pointer-events-none block h-[2px] -mt-0.5 text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
+        '<span class="pointer-events-none block h-[0px] -mt-0.5 text-center whitespace-nowrap text-[15px] text-ink dark:text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">' +
         esc(p.cap) +
         "</span>";
 
