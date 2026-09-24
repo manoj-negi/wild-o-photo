@@ -489,11 +489,11 @@
   }
 
   /*
-   * Flow's own script (below) lays photos out into scattered columns;
+   * Flow's own script (below) lays photos out in a dense bento grid;
    * Grid uses a simple horizontal strip. Both close ranks on their own
-   * — a column is a flex/grid container, so hiding one of its children
-   * with display:none collapses that slot immediately, no re-layout
-   * needed here.
+   * — hiding a child with display:none removes it from grid placement
+   * (Flow) or the flex flow (Grid) immediately, and grid-auto-flow:
+   * dense backfills the gap, so no re-layout is needed here.
    */
   function applyFilters() {
     var photos = document.querySelectorAll(".photo-item");
@@ -2132,7 +2132,7 @@
 
   //
 
-  /* ── Flow view — scattered column layout + infinite scroll ────────── */
+  /* ── Flow view — bento grid layout + infinite scroll ───────────────── */
 
   (function () {
     var canvas = document.getElementById("flowCanvas");
@@ -2172,32 +2172,29 @@
     /*
      * IMPORTANT:
      *
-     * #flowCanvas holds a row of column <div>s that this script builds
-     * and owns (see buildFlowColumns) — .photo-item elements always end
-     * up inside one of those columns, never as a direct child of
-     * #flowCanvas itself.
+     * #flowCanvas is itself the CSS grid (.bento-grid / .s-* in
+     * partials/head.ejs) — grid-auto-flow: dense backfills gaps with
+     * later items, which is what produces the mosaic look. .photo-item
+     * elements are direct children of #flowCanvas; nothing here moves
+     * them into a wrapper the way the old column-balancing layout did.
      *
-     * Each photo's width, its inset from the column edge, and the gap
-     * above it are randomized — but seeded from the photo's own slug
-     * (flowSeed/flowRng), so a given photo always gets the same geometry
-     * no matter when or where it loads: a fresh page load, a later
-     * infinite-scroll page, and a column-count change on resize all
-     * agree. That's what produces the off-grid, scattered feel instead
-     * of a tidy aligned masonry.
+     * Each photo's tile size is one of five presets (s-sm/s-md/s-lg/
+     * s-wide/s-tall), picked by a seeded PRNG keyed off the photo's own
+     * slug (flowSeed/flowRng) — so a given photo always gets the same
+     * *initial* size no matter when or where it loads: a fresh page
+     * load, a later infinite-scroll page, and a resize all agree.
      *
-     * A photo is only placed into a column once its real <img> has
-     * loaded (placeFlowItem/queueFlowItem below), so column-balancing
-     * always works from the photo's true rendered height, never a guess.
-     * Guessing was tried before (the old per-photo l/t/w/h columns on
-     * `photos`, driven by a fixed-cycle template) and caused a recurring
-     * dead-space gap bug — see
-     * migrations/20260910120000-clear-photo-positions.js. Nothing here
-     * reads or writes that (or any) per-photo position data on the
-     * backend; the whole layout is computed client-side.
+     * That initial pick knows nothing about the photo itself, so once
+     * its <img> has loaded, placeFlowItem corrects it to whichever
+     * preset's own width:height ratio is the closest match to the
+     * photo's real one (flowBestSizeClass) — otherwise a panorama
+     * seeded into the portrait s-tall slot (or a portrait photo into
+     * the wide s-wide slot) gets object-cover-cropped down to an odd
+     * sliver of itself.
      */
 
     // Seeded PRNG (mulberry32) — deterministic per seed, so the same
-    // photo always gets the same "random" geometry.
+    // photo always gets the same "random" size.
     function flowRng(seed) {
       var t = seed + 0x6d2b79f5;
 
@@ -2219,148 +2216,132 @@
       return h;
     }
 
-    var FLOW_WIDTH_MIN = 40; // narrowest a tile can be, as % of its column
-    var FLOW_WIDTH_RANGE = 60; // + up to this much more (40%–100%)
-    var FLOW_GAP_MIN = 18; // smallest gap above a tile, in px
-    var FLOW_GAP_RANGE = 150; // + up to this much more
+    var FLOW_SIZES = ["s-sm", "s-md", "s-lg", "s-wide", "s-tall"];
 
-    function flowGeometry(slug) {
+    // Column/row span of each preset — must match the .s-* rules in
+    // partials/head.ejs. Used to turn live grid metrics into each
+    // preset's actual rendered aspect ratio (see flowMeasureSizeAspects).
+    var FLOW_SIZE_SPANS = {
+      "s-sm": { col: 2, row: 4 },
+      "s-md": { col: 2, row: 7 },
+      "s-lg": { col: 4, row: 10 },
+      "s-wide": { col: 4, row: 5 },
+      "s-tall": { col: 2, row: 9 },
+    };
+
+    function flowSizeClass(slug) {
       var r = flowRng(flowSeed(slug || ""));
-      var width = FLOW_WIDTH_MIN + r() * FLOW_WIDTH_RANGE;
-      var left = r() * (100 - width);
-      var gapTop = Math.round(FLOW_GAP_MIN + r() * FLOW_GAP_RANGE);
 
-      return { width: width, left: left, gapTop: gapTop };
+      return FLOW_SIZES[Math.floor(r() * FLOW_SIZES.length)];
     }
 
-    function flowColCount() {
-      var w = window.innerWidth;
+    // Each preset's actual rendered width:height ratio, measured from
+    // #flowCanvas's live computed grid metrics rather than hardcoded —
+    // column width scales with the viewport while grid-auto-rows/gap
+    // are fixed px, so a hardcoded ratio drifts wrong outside whatever
+    // one width it was calculated for. A multi-row span also swallows
+    // the row-gap *between* its own rows into its rendered height, which
+    // a naive span-count × row-height guess misses. Recomputed on
+    // buildFlowGrid() and on any resize that crosses a breakpoint.
+    var flowSizeAspects = null;
 
-      return w < 560 ? 2 : w < 900 ? 3 : w < 1280 ? 4 : 5;
+    function flowMeasureSizeAspects() {
+      var style = getComputedStyle(canvas);
+
+      var colUnit = parseFloat(style.gridTemplateColumns) || 1;
+      var rowUnit = parseFloat(style.gridAutoRows) || 1;
+      var colGap = parseFloat(style.columnGap) || 0;
+      var rowGap = parseFloat(style.rowGap) || 0;
+
+      var aspects = {};
+
+      FLOW_SIZES.forEach(function (cls) {
+        var span = FLOW_SIZE_SPANS[cls];
+        var width = span.col * colUnit + (span.col - 1) * colGap;
+        var height = span.row * rowUnit + (span.row - 1) * rowGap;
+
+        aspects[cls] = width / height;
+      });
+
+      flowSizeAspects = aspects;
     }
 
-    var flowCols = [];
-    var flowColHeights = [];
+    // Whichever preset's measured aspect ratio is the closest match
+    // (compared in log space, since ratios are multiplicative) to the
+    // photo's real one.
+    function flowBestSizeClass(aspect) {
+      var best = FLOW_SIZES[0];
+      var bestDist = Infinity;
+      var logAspect = Math.log(aspect);
 
-    function buildFlowColumns() {
+      FLOW_SIZES.forEach(function (cls) {
+        var dist = Math.abs(logAspect - Math.log(flowSizeAspects[cls]));
+
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = cls;
+        }
+      });
+
+      return best;
+    }
+
+    function buildFlowGrid() {
       canvas.className =
-        "px-4 md:px-9 pt-6 pb-18 overflow-visible grid items-start gap-5 md:gap-7";
+        "bento-grid px-4 md:px-9 pt-6 pb-18 overflow-visible";
 
-      var count = flowColCount();
-
-      canvas.style.gridTemplateColumns =
-        "repeat(" + count + ", minmax(0, 1fr))";
-      canvas.innerHTML = "";
-
-      flowCols = [];
-      flowColHeights = [];
-
-      for (var i = 0; i < count; i++) {
-        var col = document.createElement("div");
-
-        col.className = "flex flex-col";
-
-        canvas.appendChild(col);
-        flowCols.push(col);
-        flowColHeights.push(0);
-      }
+      flowMeasureSizeAspects();
     }
 
-    // Places an already-built .photo-item (its <img> must already be
-    // loaded, real or a fallback on error) into whichever column is
-    // currently shortest, applying its seeded width/inset/gap.
-    var FLOW_MIN_TILE_PX = 240; // only enforced where a column is already this wide
+    // Applies a .photo-item's seeded size class immediately, so the tile
+    // is never left unsized while its image loads, then swaps it for
+    // whichever preset actually fits the photo once that's known.
+    function placeFlowItem(a) {
+      var initial = flowSizeClass(a.getAttribute("data-slug"));
 
-    function placeFlowItem(a, img) {
-      var geo = flowGeometry(a.getAttribute("data-slug"));
+      a.classList.add(initial);
 
-      var shortest = 0;
-
-      for (var i = 1; i < flowColHeights.length; i++) {
-        if (flowColHeights[i] < flowColHeights[shortest]) {
-          shortest = i;
-        }
-      }
-
-      var colWidth = flowCols[shortest].getBoundingClientRect().width || 1;
-
-      // On columns wide enough to comfortably fit it, guarantee a
-      // 208px-minimum tile instead of letting the seeded width drift
-      // smaller — narrower columns (mobile) are left alone rather than
-      // forced to overflow their column.
-      if (colWidth >= FLOW_MIN_TILE_PX) {
-        var minWidthPct = (FLOW_MIN_TILE_PX / colWidth) * 100;
-
-        if (geo.width < minWidthPct) {
-          geo.width = minWidthPct;
-          geo.left = Math.min(geo.left, 100 - geo.width);
-        }
-      }
-
-      a.style.width = geo.width + "%";
-      a.style.marginLeft = geo.left + "%";
-      a.style.marginTop = geo.gapTop + "px";
-
-      flowCols[shortest].appendChild(a);
-
-      // Estimate the tile's rendered height from its real aspect ratio
-      // and chosen width, purely to keep the column-balancing running
-      // total current — the tile's actual on-screen height (already
-      // laid out correctly by the browser via w-full/h-auto) is what
-      // the visitor sees either way.
-      var renderedWidth = (colWidth * geo.width) / 100;
-      var aspect = (img.naturalWidth || 4) / (img.naturalHeight || 5);
-
-      flowColHeights[shortest] += geo.gapTop + renderedWidth / aspect;
-    }
-
-    function queueFlowItem(a) {
       var img = a.querySelector("img");
 
       if (!img) {
         return;
       }
 
-      if (img.complete && img.naturalWidth) {
-        placeFlowItem(a, img);
+      function correctFlowItemSize() {
+        if (!img.naturalWidth || !img.naturalHeight) {
+          return;
+        }
+
+        var best = flowBestSizeClass(img.naturalWidth / img.naturalHeight);
+
+        if (best !== initial) {
+          a.classList.remove(initial);
+          a.classList.add(best);
+        }
+      }
+
+      if (img.complete) {
+        correctFlowItemSize();
       } else {
-        img.addEventListener("load", function () {
-          placeFlowItem(a, img);
-        });
-        img.addEventListener("error", function () {
-          // A broken image still gets placed (at a modest fallback
-          // aspect ratio) so it doesn't just vanish from the layout.
-          placeFlowItem(a, { naturalWidth: 0, naturalHeight: 0 });
-        });
+        img.addEventListener("load", correctFlowItemSize);
       }
     }
 
-    // Re-lays-out everything currently on the page — used when a resize
-    // crosses a column-count breakpoint. Photos already loaded are
-    // re-placed instantly (no reload, no re-wait); anything still
-    // mid-load re-queues itself as usual once ready.
-    function rebuildFlowLayout() {
-      var items = Array.prototype.slice.call(
-        canvas.querySelectorAll(".photo-item"),
-      );
-
-      buildFlowColumns();
-
-      items.forEach(queueFlowItem);
-    }
-
     // The server already rendered the first page of photos flat inside
-    // #flowCanvas (see index.ejs) — grab those before buildFlowColumns()
-    // clears the container, then queue each one for real placement.
-    var initialItems = Array.prototype.slice.call(
-      canvas.querySelectorAll(".photo-item"),
-    );
+    // #flowCanvas (see index.ejs) as direct children — just size them.
+    buildFlowGrid();
 
-    buildFlowColumns();
-    initialItems.forEach(queueFlowItem);
+    Array.prototype.slice
+      .call(canvas.querySelectorAll(".photo-item"))
+      .forEach(placeFlowItem);
 
+    // Re-measure when a resize crosses one of .bento-grid's breakpoints,
+    // so any photo that finishes loading afterward (a lazy one further
+    // down the page, or the next infinite-scroll batch) still gets
+    // matched against the size the grid is rendering at now. Tiles
+    // already placed keep whatever size they were given — like the
+    // seeded initial pick, this doesn't retroactively rebuild the page.
     var flowResizeTimer = null;
-    var flowCurrentCols = flowColCount();
 
     window.addEventListener("resize", function () {
       if (canvas.offsetParent === null) {
@@ -2368,15 +2349,7 @@
       }
 
       clearTimeout(flowResizeTimer);
-
-      flowResizeTimer = setTimeout(function () {
-        var cols = flowColCount();
-
-        if (cols !== flowCurrentCols) {
-          flowCurrentCols = cols;
-          rebuildFlowLayout();
-        }
-      }, 150);
+      flowResizeTimer = setTimeout(flowMeasureSizeAspects, 150);
     });
 
     var pageSize = parseInt(canvas.getAttribute("data-page-size"), 10) || 30;
@@ -2393,7 +2366,7 @@
       a.href = "/photo/" + encodeURIComponent(p.slug);
 
       a.className =
-        "photo-item group block overflow-visible hover:z-10 focus-visible:z-10";
+        "photo-item group block overflow-visible shadow-sm hover:z-10 focus-visible:z-10";
 
       a.setAttribute("data-index", nextIndex++);
       a.setAttribute("data-slug", p.slug || "");
@@ -2406,12 +2379,14 @@
       a.setAttribute("data-year", p.year || "");
 
       a.innerHTML =
-        '<div class="relative">' +
+        '<div class="relative h-full">' +
+        '<div class="absolute inset-0 rounded-lg overflow-hidden">' +
         '<img src="' +
         escAttr(p.src) +
         '" alt="' +
         escAttr(p.alt) +
-        '" class="block w-full h-auto select-none">' +
+        '" class="block w-full h-full object-cover select-none">' +
+        "</div>" +
         // Cursor-following plus icon
         '<span aria-hidden="true" class="photo-plus-cursor pointer-events-none absolute z-20 opacity-0 -translate-x-1/2 -translate-y-1/2">' +
         '<span class="relative w-[68px] h-[68px] grid place-items-center">' +
@@ -2494,13 +2469,11 @@
     }
 
     function appendPhotos(newPhotos) {
-      /*
-       * We do NOT distribute photos between columns manually — each one
-       * is queued (queueFlowItem, above) and placed into whichever
-       * column is shortest once its image has loaded.
-       */
       newPhotos.forEach(function (p) {
-        queueFlowItem(buildPhotoItem(p));
+        var a = buildPhotoItem(p);
+
+        placeFlowItem(a);
+        canvas.appendChild(a);
       });
 
       /*
@@ -2553,15 +2526,11 @@
     flowLoadAll = loadAllRemaining;
     restoreFlowScroll = restoreFlowScrollPosition;
 
-    // A large rootMargin here fires loadNextPage() almost immediately on
-    // page load (the sentinel is "nearly visible" before the visitor has
-    // scrolled at all), stacking a second batch of photos into the masonry
-    // grid within a second or two. Since none of these images reserve their
-    // own width/height, each one popping in — and the resulting column
-    // rebalance from the new batch — can shift an existing photo out from
-    // under the visitor's cursor mid-hover. Keeping this small means the
-    // next page only loads once the visitor has actually scrolled close to
-    // the bottom, well after the visible photos have settled.
+    // A large rootMargin here would fire loadNextPage() almost immediately
+    // on page load (the sentinel is "nearly visible" before the visitor
+    // has scrolled at all), fetching a second batch the visitor may never
+    // scroll to. Keeping this small means the next page only loads once
+    // the visitor has actually scrolled close to the bottom.
     var observer = new IntersectionObserver(
       function (entries) {
         if (entries[0].isIntersecting) {
