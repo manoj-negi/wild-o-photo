@@ -424,6 +424,9 @@
         Object.keys(activeFilters).forEach(function (key) {
           if (activeFilters[key]) updateButtonLabel(key);
         });
+
+        updateResetButton();
+
         applyFiltersAfterLoading();
       });
     }
@@ -2287,8 +2290,7 @@
     }
 
     function buildFlowGrid() {
-      canvas.className =
-        "bento-grid px-4 md:px-9 pt-6 pb-18 overflow-visible";
+      canvas.className = "bento-grid px-4 md:px-9 pt-6 pb-18 overflow-visible";
 
       flowMeasureSizeAspects();
     }
